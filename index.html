@@ -205,11 +205,11 @@ const Store={
 
 // ---------- sound (synth, no files) ----------
 const Sfx=(()=>{
-  let ctx=null, muted=Store.get('fb_mute',false);
+  let ctx=null, muted=Store.get('fb_mute',false), adMuted=false;
   function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
   // f: Hz, d: seconds, slide: end frequency for a pitch glide, delay: seconds from now
   function tone(f,d,type,g,{slide=null,delay=0,attack=0.004}={}){
-    if(muted)return;
+    if(muted||adMuted)return;
     try{
       const c=ac(),o=c.createOscillator(),v=c.createGain(),t=c.currentTime+delay;
       o.type=type;o.frequency.setValueAtTime(f,t);
@@ -219,7 +219,7 @@ const Sfx=(()=>{
     }catch(_){}
   }
   function noise(d,g,delay=0){
-    if(muted)return;
+    if(muted||adMuted)return;
     try{
       const c=ac(),n=Math.floor(c.sampleRate*d),b=c.createBuffer(1,n,c.sampleRate),data=b.getChannelData(0);
       for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
@@ -241,32 +241,60 @@ const Sfx=(()=>{
     click(){tone(900,0.03,'square',0.025);},
     over(){tone(330,0.5,'sawtooth',0.05,{slide:110});},
     toggle(){muted=!muted;Store.set('fb_mute',muted);return muted;},
+    // Portals require the game to be silent for the whole ad; this does not touch the player's own mute setting.
+    suspend(on){adMuted=on;try{if(ctx){if(on)ctx.suspend();else ctx.resume();}}catch(_){}},
     get muted(){return muted;}
   };
 })();
 function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
 
-// ---------- ads adapter: opt-in only, between rounds only ----------
+// ---------- ads adapter: rewarded (revive) and between rounds only, never mid-round ----------
+const AD_TIMEOUT=30000;
 const Ads={
   sdk:null,
+  _resume:null,
   async init(){
     try{
       if(window.CrazyGames&&window.CrazyGames.SDK){await window.CrazyGames.SDK.init();this.sdk='cg';}
       else if(window.PokiSDK){await window.PokiSDK.init();window.PokiSDK.gameLoadingFinished();this.sdk='poki';}
+      else if(window.GamePix){this.sdk='gpix';}
+      else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
     }catch(_){this.sdk=null;}
   },
   playStart(){if(this.sdk==='poki')window.PokiSDK.gameplayStart();},
   playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();},
+  // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
+  gmAd(){
+    return new Promise(res=>{
+      let done=false;
+      const finish=()=>{if(done)return;done=true;Ads._resume=null;Sfx.suspend(false);res();};
+      Ads._resume=finish;
+      try{
+        if(typeof sdk!=='undefined'&&sdk&&typeof sdk.showBanner==='function')sdk.showBanner();
+        else return finish();
+      }catch(_){return finish();}
+      setTimeout(finish,AD_TIMEOUT); // never strand the player if the SDK goes quiet
+    });
+  },
   rewarded(){
     if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('rewarded',{adFinished:()=>res(true),adError:()=>res(false)}));
     if(this.sdk==='poki')return window.PokiSDK.rewardedBreak();
+    if(this.sdk==='gpix')return window.GamePix.rewardAd().then(r=>r!==false).catch(()=>false);
+    if(this.sdk==='gm')return this.gmAd().then(()=>true);
     return Promise.resolve(true);
   },
   between(){
     if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('midgame',{adFinished:res,adError:res}));
     if(this.sdk==='poki')return window.PokiSDK.commercialBreak();
+    if(this.sdk==='gpix')return Promise.resolve(window.GamePix.interstitialAd()).catch(()=>{});
+    if(this.sdk==='gm')return this.gmAd();
     return Promise.resolve();
   }
+};
+// Called by the GameMonetize SDK snippet injected per portal. Muting for the whole ad is mandatory there.
+window.fbAd=function(name){
+  if(name==='pause')Sfx.suspend(true);
+  else if(name==='start'){Sfx.suspend(false);if(Ads._resume)Ads._resume();}
 };
 
 // ---------- state ----------
@@ -635,7 +663,8 @@ document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes
 window.addEventListener('resize',()=>{layout();render();});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 syncSoundBtn();
-Ads.init().finally(newGame);
+// Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
+Ads.init().finally(()=>{newGame();if(Ads.sdk)Ads.between();});
 </script>
 </body>
 </html>
