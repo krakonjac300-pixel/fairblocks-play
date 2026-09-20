@@ -262,13 +262,34 @@ const Ads={
       if(window.CrazyGames&&window.CrazyGames.SDK){await window.CrazyGames.SDK.init();this.sdk='cg';}
       else if(window.PokiSDK){await window.PokiSDK.init();window.PokiSDK.gameLoadingFinished();this.sdk='poki';}
       else if(window.GamePix){this.sdk='gpix';}
+      else if(window.YaGames){this.ysdk=await window.YaGames.init();this.sdk='ya';}
+      else if(window.y8Sdk){this.sdk='y8';}
       else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
     }catch(_){this.sdk=null;}
   },
   cg(){try{return window.CrazyGames.SDK.game;}catch(_){return null;}},
-  playStart(){if(this.sdk==='poki')window.PokiSDK.gameplayStart();if(this.sdk==='cg'&&this.cg())this.cg().gameplayStart();},
-  playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();if(this.sdk==='cg'&&this.cg())this.cg().gameplayStop();},
+  ya(){try{return this.ysdk.features;}catch(_){return null;}},
+  // Called once the first board is on screen.
+  loaded(){if(this.sdk==='ya'&&this.ya()&&this.ya().LoadingAPI)try{this.ya().LoadingAPI.ready();}catch(_){}},
+  playStart(){
+    if(this.sdk==='poki')window.PokiSDK.gameplayStart();
+    if(this.sdk==='cg'&&this.cg())this.cg().gameplayStart();
+    if(this.sdk==='ya'&&this.ya()&&this.ya().GameplayAPI)try{this.ya().GameplayAPI.start();}catch(_){}
+  },
+  playStop(){
+    if(this.sdk==='poki')window.PokiSDK.gameplayStop();
+    if(this.sdk==='cg'&&this.cg())this.cg().gameplayStop();
+    if(this.sdk==='ya'&&this.ya()&&this.ya().GameplayAPI)try{this.ya().GameplayAPI.stop();}catch(_){}
+  },
   happy(){if(this.sdk==='cg'&&this.cg())try{this.cg().happytime();}catch(_){}},
+  // Wraps a callback-style ad call: mutes for the ad, resolves once, never strands the player.
+  guarded(run){
+    return new Promise(res=>{
+      let done=false;const finish=v=>{if(done)return;done=true;Sfx.suspend(false);Ads.playStart();res(v);};
+      try{run(()=>{Sfx.suspend(true);Ads.playStop();},finish);}catch(_){finish(false);}
+      setTimeout(()=>finish(false),AD_TIMEOUT);
+    });
+  },
   // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
   gmAd(){
     if(Ads._pending)return Ads._pending; // one ad request at a time; a second caller shares the first
@@ -292,6 +313,8 @@ const Ads={
     if(this.sdk==='poki')return window.PokiSDK.rewardedBreak();
     if(this.sdk==='gpix')return window.GamePix.rewardAd().then(r=>r!==false).catch(()=>false);
     if(this.sdk==='gm')return this.gmAd().then(()=>true);
+    if(this.sdk==='ya')return this.guarded((open,finish)=>{let got=false;this.ysdk.adv.showRewardedVideo({callbacks:{onOpen:open,onRewarded:()=>{got=true;},onClose:()=>finish(got),onError:()=>finish(false)}});});
+    if(this.sdk==='y8')return this.guarded((open,finish)=>{window.y8Sdk.showAd({type:'reward',beforeReward:show=>show(),beforeAd:open,afterAd:()=>{},adViewed:()=>finish(true),adDismissed:()=>finish(false)}).catch(()=>finish(false));});
     return Promise.resolve(true);
   },
   between(){
@@ -299,6 +322,8 @@ const Ads={
     if(this.sdk==='poki')return window.PokiSDK.commercialBreak();
     if(this.sdk==='gpix')return Promise.resolve(window.GamePix.interstitialAd()).catch(()=>{});
     if(this.sdk==='gm')return this.gmAd();
+    if(this.sdk==='ya')return this.guarded((open,finish)=>{this.ysdk.adv.showFullscreenAdv({callbacks:{onOpen:open,onClose:()=>finish(),onError:()=>finish()}});});
+    if(this.sdk==='y8')return this.guarded((open,finish)=>{window.y8Sdk.showAd({type:'next',name:'between-rounds',beforeAd:open,afterAd:()=>finish(),adBreakDone:()=>finish()}).catch(()=>finish());});
     return Promise.resolve();
   }
 };
@@ -680,7 +705,7 @@ window.addEventListener('resize',()=>{layout();render();});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 syncSoundBtn();
 // Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
-Ads.init().finally(()=>{newGame();if(Ads.sdk)Ads.between();});
+Ads.init().finally(()=>{newGame();Ads.loaded();if(Ads.sdk)Ads.between();});
 </script>
 </body>
 </html>
