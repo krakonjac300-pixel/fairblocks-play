@@ -265,8 +265,10 @@ const Ads={
       else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
     }catch(_){this.sdk=null;}
   },
-  playStart(){if(this.sdk==='poki')window.PokiSDK.gameplayStart();},
-  playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();},
+  cg(){try{return window.CrazyGames.SDK.game;}catch(_){return null;}},
+  playStart(){if(this.sdk==='poki')window.PokiSDK.gameplayStart();if(this.sdk==='cg'&&this.cg())this.cg().gameplayStart();},
+  playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();if(this.sdk==='cg'&&this.cg())this.cg().gameplayStop();},
+  happy(){if(this.sdk==='cg'&&this.cg())try{this.cg().happytime();}catch(_){}},
   // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
   gmAd(){
     if(Ads._pending)return Ads._pending; // one ad request at a time; a second caller shares the first
@@ -284,15 +286,16 @@ const Ads={
       setTimeout(finish,AD_TIMEOUT); // a playing ad gets a generous cap, never a stranded player
     });
   },
+  // CrazyGames Basic launch forbids in-game ads; Revive is free there and Play again is instant.
   rewarded(){
-    if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('rewarded',{adFinished:()=>res(true),adError:()=>res(false)}));
+    if(this.sdk==='cg')return Promise.resolve(true);
     if(this.sdk==='poki')return window.PokiSDK.rewardedBreak();
     if(this.sdk==='gpix')return window.GamePix.rewardAd().then(r=>r!==false).catch(()=>false);
     if(this.sdk==='gm')return this.gmAd().then(()=>true);
     return Promise.resolve(true);
   },
   between(){
-    if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('midgame',{adFinished:res,adError:res}));
+    if(this.sdk==='cg')return Promise.resolve();
     if(this.sdk==='poki')return window.PokiSDK.commercialBreak();
     if(this.sdk==='gpix')return Promise.resolve(window.GamePix.interstitialAd()).catch(()=>{});
     if(this.sdk==='gm')return this.gmAd();
@@ -531,7 +534,7 @@ function placePiece(p,br,bc,idx){
   if(score>best){
     const hadBest=best>0;
     best=score;Store.set('fb_best_'+mode,best);bump('best');
-    if(hadBest&&!bestBeaten){bestBeaten=true;Sfx.best();buzz([30,40,30,40,80]);Fx.confetti();setTimeout(()=>flashCombo('New best!',true),n?350:0);}
+    if(hadBest&&!bestBeaten){bestBeaten=true;Sfx.best();buzz([30,40,30,40,80]);Fx.confetti();Ads.happy();setTimeout(()=>flashCombo('New best!',true),n?350:0);}
   }
   if(n)clearWithFx(lines);else renderBoard();
   p.cells.forEach(([r,c])=>boardEl.children[(br+r)*N+bc+c].classList.add('land'));
