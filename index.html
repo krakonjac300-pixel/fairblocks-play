@@ -81,6 +81,7 @@
   .btn{border:0; border-radius:999px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer; background:var(--panel); color:var(--ink); transition:transform .16s var(--ease-out), opacity .16s var(--ease-out)}
   .btn.accent{background:var(--accent); color:#04263a}
   .btn:active{transform:scale(.96)}
+  .btn:disabled{opacity:.6; cursor:wait; transform:none}
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important}
     body.shake{animation:none}
@@ -249,10 +250,12 @@ const Sfx=(()=>{
 function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
 
 // ---------- ads adapter: rewarded (revive) and between rounds only, never mid-round ----------
-const AD_TIMEOUT=30000;
+const AD_NOFILL_MS=4000, AD_TIMEOUT=90000;
 const Ads={
   sdk:null,
   _resume:null,
+  _started:null,
+  _pending:null,
   async init(){
     try{
       if(window.CrazyGames&&window.CrazyGames.SDK){await window.CrazyGames.SDK.init();this.sdk='cg';}
@@ -265,15 +268,19 @@ const Ads={
   playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();},
   // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
   gmAd(){
-    return new Promise(res=>{
-      let done=false;
-      const finish=()=>{if(done)return;done=true;Ads._resume=null;Sfx.suspend(false);res();};
+    if(Ads._pending)return Ads._pending; // one ad request at a time; a second caller shares the first
+    return Ads._pending=new Promise(res=>{
+      let done=false, started=false;
+      const finish=()=>{if(done)return;done=true;Ads._resume=null;Ads._started=null;Ads._pending=null;Sfx.suspend(false);res();};
       Ads._resume=finish;
+      Ads._started=()=>{started=true;};
       try{
         if(typeof sdk!=='undefined'&&sdk&&typeof sdk.showBanner==='function')sdk.showBanner();
         else return finish();
       }catch(_){return finish();}
-      setTimeout(finish,AD_TIMEOUT); // never strand the player if the SDK goes quiet
+      // SDK_GAME_PAUSE means an ad is ready to play. None within a few seconds means no fill: carry on.
+      setTimeout(()=>{if(!started)finish();},AD_NOFILL_MS);
+      setTimeout(finish,AD_TIMEOUT); // a playing ad gets a generous cap, never a stranded player
     });
   },
   rewarded(){
@@ -293,7 +300,7 @@ const Ads={
 };
 // Called by the GameMonetize SDK snippet injected per portal. Muting for the whole ad is mandatory there.
 window.fbAd=function(name){
-  if(name==='pause')Sfx.suspend(true);
+  if(name==='pause'){Sfx.suspend(true);if(Ads._started)Ads._started();}
   else if(name==='start'){Sfx.suspend(false);if(Ads._resume)Ads._resume();}
 };
 
@@ -612,8 +619,13 @@ function gameOver(){
   $('ovRevive').style.display=revived?'none':'';
   $('overlay').classList.add('show');
 }
+// Shows a busy state on an overlay button while a portal ad is requested, so it never looks dead.
+async function busy(btn,work){
+  const label=btn.textContent;btn.disabled=true;btn.textContent='One moment';
+  try{return await work();}finally{btn.disabled=false;btn.textContent=label;}
+}
 async function revive(){
-  const ok=await Ads.rewarded();
+  const ok=await busy($('ovRevive'),()=>Ads.rewarded());
   if(!$('overlay').classList.contains('show'))return; // player restarted while the ad ran
   if(!ok){toast('No reward available');return;}
   revived=true;
@@ -623,7 +635,7 @@ async function revive(){
   renderTray();
   Ads.playStart();
 }
-async function playAgain(){await Ads.between();newGame();}
+async function playAgain(){await busy($('ovAgain'),()=>Ads.between());newGame();}
 function showScores(){
   const list=Store.get(topKey(),[]);
   $('scoresMode').textContent=mode==='daily'?'Daily runs':'Zen runs';
