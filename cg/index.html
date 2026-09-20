@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#10131a">
+<title>Fair Blocks</title>
+<meta name="description" content="Fair Blocks: drag blocks onto the 8x8 grid, clear rows and columns, chase your best score. A fresh Daily board for everyone.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310131a'/%3E%3Crect x='10' y='10' width='20' height='20' rx='5' fill='%235cc8ff'/%3E%3Crect x='34' y='10' width='20' height='20' rx='5' fill='%2354e6a0'/%3E%3Crect x='10' y='34' width='20' height='20' rx='5' fill='%23ffd166'/%3E%3Crect x='34' y='34' width='20' height='20' rx='5' fill='%23ff8fb1'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#10131a; --panel:#181c26; --grid:#222838; --cell:#1c2230;
+    --ink:#e8ecf5; --muted:#8a93a8; --accent:#5cc8ff; --good:#54e6a0; --bad:#ff6b81;
+    --r:14px; --gap:4px; --pad:6px; --gold:#ffd166;
+    --ease-out:cubic-bezier(.23,1,.32,1); --ease-in-out:cubic-bezier(.77,0,.175,1);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+  body{
+    background:radial-gradient(120% 100% at 50% -10%, #1a2030 0%, var(--bg) 60%);
+    color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding:max(10px,env(safe-area-inset-top)) 12px 18px; min-height:100%; overflow-x:hidden; overflow-y:auto; user-select:none;
+    touch-action:pan-y;
+  }
+  body.shake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-2px)}}
+  header{width:100%; max-width:460px; display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .logo{font-weight:800; letter-spacing:.3px; font-size:20px}
+  .logo span{color:var(--accent)}
+  .modes{display:flex; gap:4px; background:var(--panel); padding:4px; border-radius:999px}
+  .modes button{border:0; background:transparent; color:var(--muted); font-weight:700; font-size:13px; padding:7px 12px; border-radius:999px; cursor:pointer; transition:background-color .18s var(--ease-out), color .18s var(--ease-out), transform .16s var(--ease-out)}
+  .modes button.on{background:var(--accent); color:#04263a}
+  .modes button:active{transform:scale(.96)}
+  .icons{display:flex; gap:6px}
+  .ib{border:0; background:var(--panel); color:var(--ink); width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; transition:transform .16s var(--ease-out)}
+  .ib:active{transform:scale(.92)}
+  .stats{width:100%; max-width:460px; display:flex; gap:8px}
+  .stat{flex:1; background:var(--panel); border-radius:var(--r); padding:8px 12px; position:relative; overflow:hidden}
+  .stat .k{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
+  .stat .v{font-size:22px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums}
+  .stat .v.bump{animation:bump .25s var(--ease-out)}
+  .stat .bar{position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--accent); transform-origin:left; transform:scaleX(0); transition:transform .35s var(--ease-out); opacity:.9}
+  @keyframes bump{50%{transform:scale(1.18)}}
+  .combo{color:var(--good); font-size:15px; font-weight:800; height:18px; margin:-2px 0 -4px; transition:opacity .25s var(--ease-out); opacity:0}
+  .combo.show{opacity:1; animation:comboPop .35s var(--ease-out)}
+  .combo.gold{color:var(--gold)}
+  @keyframes comboPop{0%{transform:scale(.85)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .boardWrap{position:relative}
+  #board{background:var(--grid); border-radius:var(--r); padding:var(--pad); display:grid; gap:var(--gap); touch-action:none; transition:box-shadow .4s var(--ease-out)}
+  #board.s1{box-shadow:0 0 0 1px rgba(84,230,160,.25), 0 0 24px rgba(84,230,160,.12)}
+  #board.s2{box-shadow:0 0 0 2px rgba(84,230,160,.45), 0 0 36px rgba(84,230,160,.22)}
+  #board.s3{box-shadow:0 0 0 2px rgba(255,209,102,.6), 0 0 48px rgba(255,209,102,.3)}
+  .gc{background:var(--cell); border-radius:7px; transition:background-color .12s var(--ease-out), box-shadow .2s var(--ease-out)}
+  .gc.fill{box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+  .gc.land{animation:land .2s var(--ease-out)}
+  @keyframes land{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+  .gc.ghost{outline:2px dashed rgba(255,255,255,.4); outline-offset:-2px; background:rgba(255,255,255,.08)}
+  .gc.ghostbad{outline:2px dashed var(--bad); outline-offset:-2px}
+  .gc.hint{background:rgba(92,200,255,.18)}
+  .gc.almost{box-shadow:inset 0 0 0 2px rgba(255,255,255,.14); background:#20283a}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.2);filter:brightness(1.8)}100%{transform:scale(0);opacity:0}}
+  .gc.clear{animation:pop .3s var(--ease-in-out) forwards}
+  #fx{position:absolute; inset:0; pointer-events:none}
+  .popup{position:absolute; left:0; top:0; font-weight:800; font-size:18px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); pointer-events:none; transform:translate(-50%,-50%); animation:popup .8s var(--ease-out) forwards; white-space:nowrap}
+  .popup.big{font-size:24px; color:var(--gold)}
+  @keyframes popup{0%{opacity:0; transform:translate(-50%,-30%) scale(.8)}20%{opacity:1; transform:translate(-50%,-60%) scale(1.05)}100%{opacity:0; transform:translate(-50%,-160%) scale(1)}}
+  #tray{width:100%; max-width:460px; background:var(--panel); border-radius:var(--r); padding:12px 8px; display:flex; justify-content:space-around; align-items:center; min-height:92px}
+  .slot{width:33%; display:flex; justify-content:center; align-items:center}
+  .piece{display:grid; gap:3px; cursor:grab; touch-action:none; transition:transform .16s var(--ease-out), opacity .2s var(--ease-out)}
+  .piece.in{animation:pieceIn .28s var(--ease-out)}
+  .piece.in:nth-child(1){animation-delay:0ms}
+  .slot:nth-child(2) .piece.in{animation-delay:45ms}
+  .slot:nth-child(3) .piece.in{animation-delay:90ms}
+  @keyframes pieceIn{0%{transform:scale(.8) translateY(8px);opacity:0}100%{transform:none;opacity:1}}
+  @media (hover:hover) and (pointer:fine){.piece:hover{transform:scale(1.05)}}
+  .piece.dead{opacity:.28; filter:grayscale(.6)}
+  .pc{border-radius:5px}
+  #drag{position:fixed; left:0; top:0; display:none; gap:var(--gap); pointer-events:none; z-index:50; filter:drop-shadow(0 14px 18px rgba(0,0,0,.5)); will-change:transform}
+  .footer{width:100%; max-width:460px; display:flex; gap:8px; justify-content:center}
+  .btn{border:0; border-radius:999px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer; background:var(--panel); color:var(--ink); transition:transform .16s var(--ease-out), opacity .16s var(--ease-out)}
+  .btn.accent{background:var(--accent); color:#04263a}
+  .btn:active{transform:scale(.96)}
+  .btn:disabled{opacity:.6; cursor:wait; transform:none}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important}
+    body.shake{animation:none}
+  }
+  .seed{font-size:11px; color:var(--muted); text-align:center}
+  .overlay{position:fixed; inset:0; background:rgba(8,10,15,.8); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px}
+  .overlay.show{display:flex}
+  .card{background:var(--panel); border-radius:20px; padding:24px 20px; max-width:340px; width:100%; text-align:center; animation:cardIn .28s var(--ease-out)}
+  @keyframes cardIn{0%{transform:translateY(14px) scale(.96);opacity:0}100%{transform:none;opacity:1}}
+  .card h2{margin:0 0 6px; font-size:24px}
+  .card p{color:var(--muted); margin:6px 0 14px; font-size:14px; line-height:1.5}
+  .card .big{font-size:42px; font-weight:800; color:var(--accent); margin:2px 0}
+  .card .sub{font-size:13px; color:var(--good); font-weight:700; min-height:16px}
+  .card .row{display:flex; gap:8px; margin-top:12px}
+  .card .row .btn{flex:1}
+  .card ol{text-align:left; margin:0; padding:0 0 0 22px; max-height:44vh; overflow:auto}
+  .card li{padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06); font-variant-numeric:tabular-nums}
+  .card li b{color:var(--accent)}
+  .card li small{color:var(--muted); float:right}
+  .card ol.mini{max-height:none; margin:10px 0 0; font-size:13px; color:var(--muted)}
+  .card ol.mini:empty{display:none}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--good); color:#04261a; font-weight:700; padding:10px 18px; border-radius:999px; opacity:0; transition:opacity .2s; z-index:200; font-size:13px; pointer-events:none}
+</style>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+</head>
+<body>
+  <header>
+    <div class="logo">Fair<span>Blocks</span></div>
+    <div class="modes">
+      <button id="mZen" class="on">Zen</button>
+      <button id="mDaily">Daily</button>
+    </div>
+    <div class="icons">
+      <button class="ib" id="helpBtn" title="How to play">?</button>
+      <button class="ib" id="soundBtn" title="Sound">🔊</button>
+      <button class="ib" id="scoresBtn" title="Scoreboard">🏆</button>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="k">Score</div><div class="v" id="score">0</div><div class="bar" id="bestBar"></div></div>
+    <div class="stat"><div class="k">Best</div><div class="v" id="best">0</div></div>
+    <div class="stat"><div class="k">Streak</div><div class="v" id="streak">0</div></div>
+  </div>
+  <div class="combo" id="comboMsg"></div>
+
+  <div class="boardWrap"><div id="board"></div><canvas id="fx"></canvas></div>
+
+  <div id="tray"></div>
+
+  <div class="footer">
+    <button class="btn" id="newGame">New game</button>
+    <button class="btn" id="hintBtn">Hint</button>
+    <button class="btn accent" id="shareBtn">Share</button>
+  </div>
+  <div class="seed" id="seedLbl"></div>
+
+  <div id="drag"></div>
+
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h2 id="ovTitle">No moves left</h2>
+      <p id="ovSub">Can you beat your best?</p>
+      <div class="big" id="ovScore">0</div>
+      <div class="sub" id="ovRank"></div>
+      <ol id="ovTop" class="mini"></ol>
+      <div class="row">
+        <button class="btn" id="ovRevive">Revive</button>
+        <button class="btn accent" id="ovAgain">Play again</button>
+      </div>
+      <div class="row"><button class="btn" id="ovShare">Share</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="help">
+    <div class="card">
+      <h2>How to play</h2>
+      <p>Drag a block onto the 8x8 grid.<br>Fill a full row or column to clear it.<br>Clear several lines at once, and keep clearing on consecutive moves, for bigger streak bonuses.<br>When no block fits, the run ends. Daily gives everyone the same board.</p>
+      <div class="row"><button class="btn accent" id="helpClose">Got it</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="scores">
+    <div class="card">
+      <h2>Scoreboard</h2>
+      <p id="scoresMode"></p>
+      <ol id="scoresList"></ol>
+      <div class="row"><button class="btn accent" id="scoresClose">Close</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const N = 8, GAP = 4, PAD = 6, TRAY_SCALE = 0.55, MAX_TOP = 10, LINE_BASE = 10, CHROME_H = 330;
+const PALETTE = ['#5cc8ff','#54e6a0','#ffd166','#ff8fb1','#b39dff','#ff9f6b','#7ee0d2'];
+const SHAPES = [
+  [[0,0]],
+  [[0,0],[0,1]], [[0,0],[1,0]],
+  [[0,0],[0,1],[0,2]], [[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[0,2],[0,3]], [[0,0],[1,0],[2,0],[3,0]],
+  [[0,0],[0,1],[1,0],[1,1]],
+  [[0,0],[0,1],[1,0]], [[0,0],[0,1],[1,1]], [[0,1],[1,0],[1,1]], [[0,0],[1,0],[1,1]],
+  [[0,0],[0,1],[0,2],[1,0]], [[0,0],[0,1],[0,2],[1,2]], [[0,0],[1,0],[1,1],[1,2]], [[0,2],[1,0],[1,1],[1,2]],
+  [[0,0],[0,1],[1,1],[1,2]], [[0,1],[0,2],[1,0],[1,1]],
+  [[0,0],[0,1],[0,2],[1,1]],
+  [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]], [[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,0],[2,0]], [[0,0],[0,1],[0,2],[1,2],[2,2]],
+  [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]
+];
+
+// ---------- provably fair RNG ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+// ---------- storage (safe in iframes / private mode) ----------
+const Store={
+  get(k,def){try{const v=localStorage.getItem(k);return v===null?def:JSON.parse(v);}catch(_){return def;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}}
+};
+
+// ---------- sound (synth, no files) ----------
+const Sfx=(()=>{
+  let ctx=null, muted=Store.get('fb_mute',false), adMuted=false;
+  function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
+  // f: Hz, d: seconds, slide: end frequency for a pitch glide, delay: seconds from now
+  function tone(f,d,type,g,{slide=null,delay=0,attack=0.004}={}){
+    if(muted||adMuted)return;
+    try{
+      const c=ac(),o=c.createOscillator(),v=c.createGain(),t=c.currentTime+delay;
+      o.type=type;o.frequency.setValueAtTime(f,t);
+      if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);
+      v.gain.setValueAtTime(0.0001,t);v.gain.exponentialRampToValueAtTime(g,t+attack);v.gain.exponentialRampToValueAtTime(0.0001,t+d);
+      o.connect(v).connect(c.destination);o.start(t);o.stop(t+d+0.02);
+    }catch(_){}
+  }
+  function noise(d,g,delay=0){
+    if(muted||adMuted)return;
+    try{
+      const c=ac(),n=Math.floor(c.sampleRate*d),b=c.createBuffer(1,n,c.sampleRate),data=b.getChannelData(0);
+      for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+      const s=c.createBufferSource(),v=c.createGain(),hp=c.createBiquadFilter(),t=c.currentTime+delay;
+      s.buffer=b;hp.type='highpass';hp.frequency.value=1800;v.gain.value=g;
+      s.connect(hp).connect(v).connect(c.destination);s.start(t);
+    }catch(_){}
+  }
+  const step=(n,streak)=>Math.pow(1.06,Math.min(streak,8))*n; // pitch climbs with the streak
+  return{
+    pick(){tone(520,0.05,'triangle',0.05,{slide:700});},
+    place(){tone(180,0.09,'sine',0.16,{slide:120});noise(0.03,0.06);},
+    clear(n,streak){
+      for(let i=0;i<Math.min(n,4);i++)tone(step(523+i*130,streak),0.18,'sine',0.13,{delay:i*0.055});
+      noise(0.08,0.08);
+    },
+    combo(streak){tone(step(880,streak),0.16,'square',0.05);tone(step(1175,streak),0.22,'square',0.05,{delay:0.08});},
+    best(){[523,659,784,1047].forEach((f,i)=>tone(f,0.22,'triangle',0.12,{delay:i*0.09}));tone(1047,0.5,'sine',0.08,{delay:0.36});},
+    click(){tone(900,0.03,'square',0.025);},
+    over(){tone(330,0.5,'sawtooth',0.05,{slide:110});},
+    toggle(){muted=!muted;Store.set('fb_mute',muted);return muted;},
+    // Portals require the game to be silent for the whole ad; this does not touch the player's own mute setting.
+    suspend(on){adMuted=on;try{if(ctx){if(on)ctx.suspend();else ctx.resume();}}catch(_){}},
+    get muted(){return muted;}
+  };
+})();
+function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
+
+// ---------- ads adapter: rewarded (revive) and between rounds only, never mid-round ----------
+const AD_NOFILL_MS=4000, AD_TIMEOUT=90000;
+const Ads={
+  sdk:null,
+  _resume:null,
+  _started:null,
+  _pending:null,
+  async init(){
+    try{
+      if(window.CrazyGames&&window.CrazyGames.SDK){await window.CrazyGames.SDK.init();this.sdk='cg';}
+      else if(window.PokiSDK){await window.PokiSDK.init();window.PokiSDK.gameLoadingFinished();this.sdk='poki';}
+      else if(window.GamePix){this.sdk='gpix';}
+      else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
+    }catch(_){this.sdk=null;}
+  },
+  playStart(){if(this.sdk==='poki')window.PokiSDK.gameplayStart();},
+  playStop(){if(this.sdk==='poki')window.PokiSDK.gameplayStop();},
+  // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
+  gmAd(){
+    if(Ads._pending)return Ads._pending; // one ad request at a time; a second caller shares the first
+    return Ads._pending=new Promise(res=>{
+      let done=false, started=false;
+      const finish=()=>{if(done)return;done=true;Ads._resume=null;Ads._started=null;Ads._pending=null;Sfx.suspend(false);res();};
+      Ads._resume=finish;
+      Ads._started=()=>{started=true;};
+      try{
+        if(typeof sdk!=='undefined'&&sdk&&typeof sdk.showBanner==='function')sdk.showBanner();
+        else return finish();
+      }catch(_){return finish();}
+      // SDK_GAME_PAUSE means an ad is ready to play. None within a few seconds means no fill: carry on.
+      setTimeout(()=>{if(!started)finish();},AD_NOFILL_MS);
+      setTimeout(finish,AD_TIMEOUT); // a playing ad gets a generous cap, never a stranded player
+    });
+  },
+  rewarded(){
+    if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('rewarded',{adFinished:()=>res(true),adError:()=>res(false)}));
+    if(this.sdk==='poki')return window.PokiSDK.rewardedBreak();
+    if(this.sdk==='gpix')return window.GamePix.rewardAd().then(r=>r!==false).catch(()=>false);
+    if(this.sdk==='gm')return this.gmAd().then(()=>true);
+    return Promise.resolve(true);
+  },
+  between(){
+    if(this.sdk==='cg')return new Promise(res=>window.CrazyGames.SDK.ad.requestAd('midgame',{adFinished:res,adError:res}));
+    if(this.sdk==='poki')return window.PokiSDK.commercialBreak();
+    if(this.sdk==='gpix')return Promise.resolve(window.GamePix.interstitialAd()).catch(()=>{});
+    if(this.sdk==='gm')return this.gmAd();
+    return Promise.resolve();
+  }
+};
+// Called by the GameMonetize SDK snippet injected per portal. Muting for the whole ad is mandatory there.
+window.fbAd=function(name){
+  if(name==='pause'){Sfx.suspend(true);if(Ads._started)Ads._started();}
+  else if(name==='start'){Sfx.suspend(false);if(Ads._resume)Ads._resume();}
+};
+
+// ---------- state ----------
+let mode='zen', rng=Math.random, seedLabel='';
+let grid, score, best, moves, streak, tray, revived, dragState=null, shownScore=0, bestBeaten=false;
+const $=id=>document.getElementById(id);
+const boardEl=$('board'), trayEl=$('tray'), dragEl=$('drag'), fxCanvas=$('fx');
+
+function emptyGrid(){return Array.from({length:N},()=>Array(N).fill(null));}
+function randShape(){
+  const cells=SHAPES[Math.floor(rng()*SHAPES.length)];
+  const color=PALETTE[Math.floor(rng()*PALETTE.length)];
+  const rows=Math.max(...cells.map(c=>c[0]))+1, cols=Math.max(...cells.map(c=>c[1]))+1;
+  return {cells,color,rows,cols};
+}
+function refillTray(){return [randShape(),randShape(),randShape()];}
+
+function setMode(m){mode=m;$('mZen').classList.toggle('on',m==='zen');$('mDaily').classList.toggle('on',m==='daily');newGame();}
+
+function newGame(){
+  if(mode==='daily'){rng=mulberry32(hashStr('fairblocks-'+todayStr()));}
+  else{rng=Math.random;}
+  grid=emptyGrid();score=0;shownScore=0;moves=0;streak=0;revived=false;bestBeaten=false;
+  best=Store.get('fb_best_'+mode,0);
+  tray=refillTray();
+  $('overlay').classList.remove('show');
+  updateSeedLabel();
+  layout();render();updateStats();
+  if(!Store.get('fb_seen',false))showTip('Drag a block onto the grid');
+  Ads.playStart();
+}
+function showTip(msg){const el=$('comboMsg');el.textContent=msg;el.classList.add('show');clearTimeout(comboTimer);}
+function nextDailyIn(){
+  const now=new Date(), next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+  const m=Math.max(0,Math.round((next-now)/60000));
+  return m>=60?`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`:`${m}m`;
+}
+function updateSeedLabel(){
+  $('seedLbl').textContent=mode==='daily'?`Daily ${todayStr()} · same board for everyone · next board in ${nextDailyIn()}`:'Zen · endless';
+}
+setInterval(()=>{if(mode==='daily')updateSeedLabel();},30000);
+
+// ---------- sizing ----------
+let cell=40;
+function layout(){
+  const w=Math.min(window.innerWidth-24,440), h=window.innerHeight-CHROME_H;
+  const size=Math.max(200,Math.min(w,h));
+  cell=Math.floor((size-2*PAD-(N-1)*GAP)/N);
+  const px=cell*N+(N-1)*GAP+2*PAD;
+  boardEl.style.width=px+'px';boardEl.style.height=px+'px';
+  boardEl.style.gridTemplateColumns=`repeat(${N},${cell}px)`;
+  fxCanvas.width=px;fxCanvas.height=px;
+}
+
+// ---------- rendering ----------
+function render(){renderBoard();renderTray(true);}
+function renderBoard(){
+  const frag=document.createDocumentFragment();
+  const almost=almostCells();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div');d.className='gc';
+    if(grid[r][c]){d.classList.add('fill');d.style.background=grid[r][c];}
+    else if(almost.has(r*N+c))d.classList.add('almost');
+    frag.appendChild(d);
+  }
+  boardEl.replaceChildren(frag);
+}
+// The single empty cell of any row or column that is 7/8 full: a quiet nudge toward the clear.
+function almostCells(){
+  const out=new Set();
+  for(let i=0;i<N;i++){
+    const rowEmpty=[],colEmpty=[];
+    for(let j=0;j<N;j++){if(!grid[i][j])rowEmpty.push(i*N+j);if(!grid[j][i])colEmpty.push(j*N+i);}
+    if(rowEmpty.length===1)out.add(rowEmpty[0]);
+    if(colEmpty.length===1)out.add(colEmpty[0]);
+  }
+  return out;
+}
+function pieceEl(p,size,gap){
+  const el=document.createElement('div');
+  el.style.gridTemplateColumns=`repeat(${p.cols},${size}px)`;el.style.gap=gap+'px';
+  const filled=new Set(p.cells.map(([r,c])=>r*p.cols+c));
+  for(let i=0;i<p.rows*p.cols;i++){
+    const cc=document.createElement('div');cc.className='pc';
+    cc.style.width=size+'px';cc.style.height=size+'px';
+    cc.style.background=filled.has(i)?p.color:'transparent';
+    el.appendChild(cc);
+  }
+  return el;
+}
+function renderTray(animate){
+  const ps=Math.max(14,Math.round(cell*TRAY_SCALE));
+  const frag=document.createDocumentFragment();
+  tray.forEach((p,i)=>{
+    const slot=document.createElement('div');slot.className='slot';
+    if(p){
+      const el=pieceEl(p,ps,3);el.className=animate?'piece in':'piece';
+      if(!anyPlacement(p))el.classList.add('dead');
+      el.addEventListener('pointerdown',e=>startDrag(e,i,ps));
+      slot.appendChild(el);
+    }
+    frag.appendChild(slot);
+  });
+  trayEl.replaceChildren(frag);
+}
+function updateStats(){
+  $('best').textContent=best;$('streak').textContent=streak;
+  $('bestBar').style.transform=`scaleX(${best?Math.min(1,score/best):0})`;
+  boardEl.className=streak>=5?'s3':streak>=3?'s2':streak>=1?'s1':'';
+  tickScore();
+}
+function scorePop(text,r,c,big){
+  const el=document.createElement('div');el.className='popup'+(big?' big':'');el.textContent=text;
+  const step=cell+GAP;el.style.left=(PAD+c*step+cell/2)+'px';el.style.top=(PAD+r*step+cell/2)+'px';
+  boardEl.parentElement.appendChild(el);setTimeout(()=>el.remove(),850);
+}
+function tickScore(){
+  if(shownScore===score){$('score').textContent=score;return;}
+  shownScore+=Math.ceil((score-shownScore)/6);
+  $('score').textContent=shownScore;
+  requestAnimationFrame(tickScore);
+}
+function bump(id){const el=$(id);el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
+
+// ---------- rules ----------
+function canPlaceAt(p,br,bc){
+  return p.cells.every(([r,c])=>{const R=br+r,C=bc+c;return R>=0&&C>=0&&R<N&&C<N&&!grid[R][C];});
+}
+function anyPlacement(p){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(canPlaceAt(p,r,c))return true;return false;}
+function findPlacement(p){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(canPlaceAt(p,r,c))return {r,c};return null;}
+function fullLines(g){
+  const rows=[],cols=[];
+  for(let i=0;i<N;i++){
+    if(g[i].every(Boolean))rows.push(i);
+    if(g.every(row=>row[i]))cols.push(i);
+  }
+  return {rows,cols};
+}
+function withPiece(g,p,br,bc){
+  const next=g.map(row=>row.slice());
+  p.cells.forEach(([r,c])=>{next[br+r][bc+c]=p.color;});
+  return next;
+}
+function withoutLines(g,{rows,cols}){
+  return g.map((row,r)=>row.map((v,c)=>rows.includes(r)||cols.includes(c)?null:v));
+}
+
+// ---------- drag ----------
+function startDrag(e,index,ps){
+  const p=tray[index];if(!p||dragState)return;
+  e.preventDefault();
+  Sfx.pick();buzz(8);
+  const rect=e.currentTarget.getBoundingClientRect();
+  const grabC=Math.min(p.cols-1,Math.max(0,Math.floor((e.clientX-rect.left)/(ps+3))));
+  const grabR=Math.min(p.rows-1,Math.max(0,Math.floor((e.clientY-rect.top)/(ps+3))));
+  dragState={index,p,grabR,grabC,pointerId:e.pointerId,x:0,y:0};
+  const el=pieceEl(p,cell,GAP);
+  dragEl.replaceChildren(...el.children);
+  dragEl.style.gridTemplateColumns=el.style.gridTemplateColumns;
+  dragEl.style.display='grid';
+  e.currentTarget.style.opacity='0.25';
+  window.addEventListener('pointermove',moveDrag);
+  window.addEventListener('pointerup',endDrag);
+  window.addEventListener('pointercancel',cancelDrag);
+  moveDrag(e);
+}
+function stopDrag(){
+  window.removeEventListener('pointermove',moveDrag);
+  window.removeEventListener('pointerup',endDrag);
+  window.removeEventListener('pointercancel',cancelDrag);
+  dragEl.style.display='none';clearGhost();
+}
+function cancelDrag(e){
+  if(!dragState||e.pointerId!==dragState.pointerId)return;
+  stopDrag();dragState=null;renderTray(false);
+}
+function targetCell(){
+  const br=boardEl.getBoundingClientRect();
+  return {row:Math.round((dragState.y-br.top-PAD)/(cell+GAP)), col:Math.round((dragState.x-br.left-PAD)/(cell+GAP))};
+}
+function clearGhost(){boardEl.querySelectorAll('.ghost,.ghostbad,.hint').forEach(el=>el.classList.remove('ghost','ghostbad','hint'));}
+function moveDrag(e){
+  if(!dragState||e.pointerId!==dragState.pointerId)return;
+  const lift=cell*1.6, step=cell+GAP;
+  dragState.x=e.clientX-(dragState.grabC+0.5)*step;
+  dragState.y=e.clientY-(dragState.grabR+0.5)*step-lift;
+  dragEl.style.transform=`translate3d(${dragState.x}px,${dragState.y}px,0) scale(1.04)`;
+  clearGhost();
+  const {row,col}=targetCell(), ok=canPlaceAt(dragState.p,row,col);
+  dragState.p.cells.forEach(([r,c])=>{
+    const R=row+r,C=col+c;if(R<0||C<0||R>=N||C>=N)return;
+    boardEl.children[R*N+C].classList.add(ok?'ghost':'ghostbad');
+  });
+}
+function endDrag(e){
+  if(!dragState||e.pointerId!==dragState.pointerId)return;
+  moveDrag(e); // release position is authoritative even without a final move event
+  const {row,col}=targetCell(), {p,index}=dragState;
+  stopDrag();
+  dragState=null;
+  if(canPlaceAt(p,row,col))placePiece(p,row,col,index);
+  else renderTray(false);
+}
+
+// ---------- turn ----------
+function placePiece(p,br,bc,idx){
+  if(!Store.get('fb_seen',false)){Store.set('fb_seen',true);$('comboMsg').classList.remove('show');}
+  grid=withPiece(grid,p,br,bc);
+  score+=p.cells.length;moves++;
+  tray=tray.map((t,i)=>i===idx?null:t);
+  Sfx.place();buzz(10);
+  const lines=fullLines(grid), n=lines.rows.length+lines.cols.length;
+  if(n){
+    streak++;
+    const pts=LINE_BASE*n*n*streak;
+    score+=pts;
+    flashCombo(n>1?`${n} lines · streak x${streak}  +${pts}`:`Line clear · streak x${streak}  +${pts}`);
+    Sfx.clear(n,streak);buzz([20,30,40]);
+    if(n>=2||streak>=3){Sfx.combo(streak);bump('streak');}
+    if(n>=3)shakeScreen();
+    const at=lines.rows.length?[lines.rows[0],3.5]:[3.5,lines.cols[0]];
+    scorePop(`+${pts}`,at[0],at[1],n>=2||streak>=3);
+  }else{streak=0;}
+  const refilled=tray.every(t=>t===null);
+  if(refilled)tray=refillTray();
+  if(score>best){
+    const hadBest=best>0;
+    best=score;Store.set('fb_best_'+mode,best);bump('best');
+    if(hadBest&&!bestBeaten){bestBeaten=true;Sfx.best();buzz([30,40,30,40,80]);Fx.confetti();setTimeout(()=>flashCombo('New best!',true),n?350:0);}
+  }
+  if(n)clearWithFx(lines);else renderBoard();
+  p.cells.forEach(([r,c])=>boardEl.children[(br+r)*N+bc+c].classList.add('land'));
+  renderTray(refilled);updateStats();
+  if(!tray.some(t=>t&&anyPlacement(t)))setTimeout(gameOver,n?320:120);
+}
+function lineCells({rows,cols}){
+  const out=[];
+  rows.forEach(r=>{for(let c=0;c<N;c++)out.push([r,c]);});
+  cols.forEach(c=>{for(let r=0;r<N;r++)out.push([r,c]);});
+  return out;
+}
+// Removes the lines from state, re-renders, then plays the pop + particle burst on the freed cells.
+function clearWithFx(lines){
+  const before=grid, cells=lineCells(lines), step=cell+GAP;
+  grid=withoutLines(grid,lines);
+  renderBoard();
+  cells.forEach(([r,c])=>{
+    const color=before[r][c]||'#fff', el=boardEl.children[r*N+c];
+    el.style.background=color;el.classList.add('fill','clear');
+    Fx.burst(PAD+c*step+cell/2,PAD+r*step+cell/2,color);
+  });
+  setTimeout(()=>cells.forEach(([r,c])=>{const el=boardEl.children[r*N+c];if(el&&!grid[r][c]){el.style.background='';el.classList.remove('fill','clear');}}),300);
+}
+
+let comboTimer=null;
+function flashCombo(msg,gold){
+  const el=$('comboMsg');el.textContent=msg;el.classList.remove('show');el.classList.toggle('gold',!!gold);void el.offsetWidth;el.classList.add('show');
+  clearTimeout(comboTimer);comboTimer=setTimeout(()=>el.classList.remove('show'),gold?1800:1200);
+}
+function shakeScreen(){document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake');}
+
+// ---------- particles ----------
+const Fx=(()=>{
+  const ctx=fxCanvas.getContext('2d');let ps=[],running=false;
+  function burst(x,y,color){
+    for(let i=0;i<6;i++){const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3;ps.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,l:1,color,r:2+Math.random()*3});}
+    if(!running){running=true;requestAnimationFrame(tick);}
+  }
+  function confetti(){
+    const w=fxCanvas.width;
+    for(let i=0;i<70;i++){const x=Math.random()*w,color=PALETTE[i%PALETTE.length];ps.push({x,y:-6,vx:(Math.random()-0.5)*2.4,vy:1+Math.random()*2.5,l:1.6,color,r:3+Math.random()*3,rect:true});}
+    if(!running){running=true;requestAnimationFrame(tick);}
+  }
+  function tick(){
+    ctx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+    ps=ps.filter(p=>p.l>0);
+    ps.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.rect?0.04:0.15;p.l-=p.rect?0.014:0.03;
+      ctx.globalAlpha=Math.min(1,Math.max(0,p.l));ctx.fillStyle=p.color;
+      if(p.rect){ctx.fillRect(p.x,p.y,p.r*2,p.r);}else{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+    });
+    ctx.globalAlpha=1;
+    if(ps.length)requestAnimationFrame(tick);else running=false;
+  }
+  return {burst,confetti};
+})();
+
+// ---------- hint ----------
+function showHint(){
+  const i=tray.findIndex(t=>t&&anyPlacement(t));
+  if(i<0)return;
+  const pos=findPlacement(tray[i]);
+  clearGhost();
+  tray[i].cells.forEach(([r,c])=>boardEl.children[(pos.r+r)*N+pos.c+c].classList.add('hint'));
+  setTimeout(clearGhost,900);
+}
+
+// ---------- game over / top scores ----------
+function topKey(){return 'fb_top_'+mode;}
+function recordScore(){
+  const list=Store.get(topKey(),[]).concat([{s:score,m:moves,d:todayStr()}]).sort((a,b)=>b.s-a.s).slice(0,MAX_TOP);
+  Store.set(topKey(),list);
+  return list.findIndex(e=>e.s===score&&e.m===moves&&e.d===todayStr())+1;
+}
+function scoreItem(e){const li=document.createElement('li');li.innerHTML=`<b>${e.s}</b> pts · ${e.m} moves <small>${e.d}</small>`;return li;}
+function gameOver(){
+  if(tray.some(t=>t&&anyPlacement(t)))return; // stale timer after a restart
+  Ads.playStop();Sfx.over();buzz(60);
+  const rank=recordScore();
+  $('ovScore').textContent=score;
+  $('ovTitle').textContent=mode==='daily'?'Daily complete':'No moves left';
+  $('ovSub').textContent=mode==='daily'?'Same board for everyone today. Share your run.':'Can you beat your best?';
+  $('ovRank').textContent=rank?`#${rank} on your scoreboard`:'';
+  $('ovTop').replaceChildren(...Store.get(topKey(),[]).slice(0,3).map(scoreItem));
+  $('ovRevive').style.display=revived?'none':'';
+  $('overlay').classList.add('show');
+}
+// Shows a busy state on an overlay button while a portal ad is requested, so it never looks dead.
+async function busy(btn,work){
+  const label=btn.textContent;btn.disabled=true;btn.textContent='One moment';
+  try{return await work();}finally{btn.disabled=false;btn.textContent=label;}
+}
+async function revive(){
+  const ok=await busy($('ovRevive'),()=>Ads.rewarded());
+  if(!$('overlay').classList.contains('show'))return; // player restarted while the ad ran
+  if(!ok){toast('No reward available');return;}
+  revived=true;
+  const filled=grid.map((row,r)=>({r,n:row.filter(Boolean).length})).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.r);
+  $('overlay').classList.remove('show');
+  clearWithFx({rows:filled,cols:[]});
+  renderTray();
+  Ads.playStart();
+}
+async function playAgain(){await busy($('ovAgain'),()=>Ads.between());newGame();}
+function showScores(){
+  const list=Store.get(topKey(),[]);
+  $('scoresMode').textContent=mode==='daily'?'Daily runs':'Zen runs';
+  $('scoresList').replaceChildren(...list.map(scoreItem));
+  if(!list.length)$('scoresList').innerHTML='<li>No runs yet. Go play!</li>';
+  $('scores').classList.add('show');
+}
+
+// ---------- share ----------
+function shareText(){
+  const d=mode==='daily'?'Daily '+todayStr():'Zen';
+  return `Fair Blocks - ${d}\nScore ${score} · ${moves} moves\nCan you beat it?`;
+}
+async function doShare(){
+  const t=shareText();
+  try{if(navigator.share){await navigator.share({text:t});return;}}catch(_){}
+  try{await navigator.clipboard.writeText(t);toast('Copied to clipboard');}catch(_){toast(score+' pts');}
+}
+function toast(msg){const el=$('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1400);}
+function syncSoundBtn(){$('soundBtn').textContent=Sfx.muted?'🔇':'🔊';}
+
+// ---------- wiring ----------
+$('mZen').onclick=()=>setMode('zen');
+$('mDaily').onclick=()=>setMode('daily');
+$('newGame').onclick=newGame;
+$('hintBtn').onclick=showHint;
+$('shareBtn').onclick=doShare;
+$('ovShare').onclick=doShare;
+$('ovAgain').onclick=playAgain;
+$('ovRevive').onclick=revive;
+$('scoresBtn').onclick=showScores;
+$('scoresClose').onclick=()=>$('scores').classList.remove('show');
+$('helpBtn').onclick=()=>$('help').classList.add('show');
+$('helpClose').onclick=()=>$('help').classList.remove('show');
+$('soundBtn').onclick=()=>{Sfx.toggle();syncSoundBtn();};
+document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes button'))Sfx.click();});
+window.addEventListener('resize',()=>{layout();render();});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+syncSoundBtn();
+// Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
+Ads.init().finally(()=>{newGame();if(Ads.sdk)Ads.between();});
+</script>
+</body>
+</html>
