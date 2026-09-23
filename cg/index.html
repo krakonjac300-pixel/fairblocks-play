@@ -67,9 +67,8 @@
   @keyframes popup{0%{opacity:0; transform:translate(-50%,-30%) scale(.8)}20%{opacity:1; transform:translate(-50%,-60%) scale(1.05)}100%{opacity:0; transform:translate(-50%,-160%) scale(1)}}
   #tray{width:100%; max-width:460px; background:var(--panel); border-radius:var(--r); padding:12px 8px; display:flex; justify-content:space-around; align-items:center; min-height:92px}
   .slot{width:33%; display:flex; justify-content:center; align-items:center}
-  .piece{display:grid; gap:3px; cursor:grab; touch-action:none; transition:transform .16s var(--ease-out), opacity .2s var(--ease-out)}
+  .piece{display:grid; cursor:grab; touch-action:none; transition:transform .16s var(--ease-out), opacity .2s var(--ease-out)}
   .piece.in{animation:pieceIn .28s var(--ease-out)}
-  .piece.in:nth-child(1){animation-delay:0ms}
   .slot:nth-child(2) .piece.in{animation-delay:45ms}
   .slot:nth-child(3) .piece.in{animation-delay:90ms}
   @keyframes pieceIn{0%{transform:scale(.8) translateY(8px);opacity:0}100%{transform:none;opacity:1}}
@@ -102,7 +101,6 @@
   .card li b{color:var(--accent)}
   .card li small{color:var(--muted); float:right}
   .card ol.mini{max-height:none; margin:10px 0 0; font-size:13px; color:var(--muted)}
-  .card ol.mini:empty{display:none}
   .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--good); color:#04261a; font-weight:700; padding:10px 18px; border-radius:999px; opacity:0; transition:opacity .2s; z-index:200; font-size:13px; pointer-events:none}
 </style>
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
@@ -208,7 +206,7 @@ const Store={
 // ---------- sound (synth, no files) ----------
 const Sfx=(()=>{
   let ctx=null, muted=Store.get('fb_mute',false), adMuted=false;
-  function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx;}
+  function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume().catch(()=>{});return ctx;}
   // f: Hz, d: seconds, slide: end frequency for a pitch glide, delay: seconds from now
   function tone(f,d,type,g,{slide=null,delay=0,attack=0.004}={}){
     if(muted||adMuted)return;
@@ -254,6 +252,7 @@ function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
 const AD_NOFILL_MS=4000, AD_TIMEOUT=90000;
 const Ads={
   sdk:null,
+  ysdk:null,
   _resume:null,
   _started:null,
   _pending:null,
@@ -265,7 +264,7 @@ const Ads={
       else if(window.YaGames){this.ysdk=await window.YaGames.init();this.sdk='ya';}
       else if(window.y8Sdk){this.sdk='y8';}
       else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
-    }catch(_){this.sdk=null;}
+    }catch(e){this.sdk=null;console.warn('Ads: SDK init failed, running without ads',e);}
   },
   cg(){try{return window.CrazyGames.SDK.game;}catch(_){return null;}},
   ya(){try{return this.ysdk.features;}catch(_){return null;}},
@@ -309,18 +308,16 @@ const Ads={
   },
   // CrazyGames Basic launch forbids in-game ads; Revive is free there and Play again is instant.
   rewarded(){
-    if(this.sdk==='cg')return Promise.resolve(true);
-    if(this.sdk==='poki')return window.PokiSDK.rewardedBreak();
-    if(this.sdk==='gpix')return window.GamePix.rewardAd().then(r=>r!==false).catch(()=>false);
+    if(this.sdk==='poki')return this.guarded((open,finish)=>{open();window.PokiSDK.rewardedBreak().then(finish,()=>finish(false));});
+    if(this.sdk==='gpix')return this.guarded((open,finish)=>{open();window.GamePix.rewardAd().then(r=>finish(r!==false),()=>finish(false));});
     if(this.sdk==='gm')return this.gmAd().then(()=>true);
     if(this.sdk==='ya')return this.guarded((open,finish)=>{let got=false;this.ysdk.adv.showRewardedVideo({callbacks:{onOpen:open,onRewarded:()=>{got=true;},onClose:()=>finish(got),onError:()=>finish(false)}});});
     if(this.sdk==='y8')return this.guarded((open,finish)=>{window.y8Sdk.showAd({type:'reward',beforeReward:show=>show(),beforeAd:open,afterAd:()=>{},adViewed:()=>finish(true),adDismissed:()=>finish(false)}).catch(()=>finish(false));});
     return Promise.resolve(true);
   },
   between(){
-    if(this.sdk==='cg')return Promise.resolve();
-    if(this.sdk==='poki')return window.PokiSDK.commercialBreak();
-    if(this.sdk==='gpix')return Promise.resolve(window.GamePix.interstitialAd()).catch(()=>{});
+    if(this.sdk==='poki')return this.guarded((open,finish)=>{open();window.PokiSDK.commercialBreak().then(()=>finish(),()=>finish());});
+    if(this.sdk==='gpix')return this.guarded((open,finish)=>{open();Promise.resolve(window.GamePix.interstitialAd()).then(()=>finish(),()=>finish());});
     if(this.sdk==='gm')return this.gmAd();
     if(this.sdk==='ya')return this.guarded((open,finish)=>{this.ysdk.adv.showFullscreenAdv({callbacks:{onOpen:open,onClose:()=>finish(),onError:()=>finish()}});});
     if(this.sdk==='y8')return this.guarded((open,finish)=>{window.y8Sdk.showAd({type:'next',name:'between-rounds',beforeAd:open,afterAd:()=>finish(),adBreakDone:()=>finish()}).catch(()=>finish());});
@@ -334,7 +331,7 @@ window.fbAd=function(name){
 };
 
 // ---------- state ----------
-let mode='zen', rng=Math.random, seedLabel='';
+let mode='zen', rng=Math.random;
 let grid, score, best, moves, streak, tray, revived, dragState=null, shownScore=0, bestBeaten=false;
 const $=id=>document.getElementById(id);
 const boardEl=$('board'), trayEl=$('tray'), dragEl=$('drag'), fxCanvas=$('fx');
@@ -351,6 +348,7 @@ function refillTray(){return [randShape(),randShape(),randShape()];}
 function setMode(m){mode=m;$('mZen').classList.toggle('on',m==='zen');$('mDaily').classList.toggle('on',m==='daily');newGame();}
 
 function newGame(){
+  if(dragState){stopDrag();dragState=null;} // a piece mid-drag must not land in the new game
   if(mode==='daily'){rng=mulberry32(hashStr('fairblocks-'+todayStr()));}
   else{rng=Math.random;}
   grid=emptyGrid();score=0;shownScore=0;moves=0;streak=0;revived=false;bestBeaten=false;
@@ -453,13 +451,15 @@ function tickScore(){
   $('score').textContent=shownScore;
   requestAnimationFrame(tickScore);
 }
-function bump(id){const el=$(id);el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
+// Re-triggers a CSS animation class even if it is already applied.
+function restart(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
+function bump(id){restart($(id),'bump');}
 
 // ---------- rules ----------
 function canPlaceAt(p,br,bc){
   return p.cells.every(([r,c])=>{const R=br+r,C=bc+c;return R>=0&&C>=0&&R<N&&C<N&&!grid[R][C];});
 }
-function anyPlacement(p){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(canPlaceAt(p,r,c))return true;return false;}
+function anyPlacement(p){return !!findPlacement(p);}
 function findPlacement(p){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(canPlaceAt(p,r,c))return {r,c};return null;}
 function fullLines(g){
   const rows=[],cols=[];
@@ -505,7 +505,7 @@ function stopDrag(){
 }
 function cancelDrag(e){
   if(!dragState||e.pointerId!==dragState.pointerId)return;
-  stopDrag();dragState=null;renderTray(false);
+  stopDrag();dragState=null;renderTray();
 }
 function targetCell(){
   const br=boardEl.getBoundingClientRect();
@@ -532,7 +532,7 @@ function endDrag(e){
   stopDrag();
   dragState=null;
   if(canPlaceAt(p,row,col))placePiece(p,row,col,index);
-  else renderTray(false);
+  else renderTray();
 }
 
 // ---------- turn ----------
@@ -577,20 +577,21 @@ function clearWithFx(lines){
   const before=grid, cells=lineCells(lines), step=cell+GAP;
   grid=withoutLines(grid,lines);
   renderBoard();
-  cells.forEach(([r,c])=>{
+  const els=cells.map(([r,c])=>{
     const color=before[r][c]||'#fff', el=boardEl.children[r*N+c];
     el.style.background=color;el.classList.add('fill','clear');
     Fx.burst(PAD+c*step+cell/2,PAD+r*step+cell/2,color);
+    return el;
   });
-  setTimeout(()=>cells.forEach(([r,c])=>{const el=boardEl.children[r*N+c];if(el&&!grid[r][c]){el.style.background='';el.classList.remove('fill','clear');}}),300);
+  setTimeout(()=>els.forEach(el=>{if(el.isConnected&&el.classList.contains('clear')){el.style.background='';el.classList.remove('fill','clear');}}),300);
 }
 
 let comboTimer=null;
 function flashCombo(msg,gold){
-  const el=$('comboMsg');el.textContent=msg;el.classList.remove('show');el.classList.toggle('gold',!!gold);void el.offsetWidth;el.classList.add('show');
+  const el=$('comboMsg');el.textContent=msg;el.classList.toggle('gold',!!gold);restart(el,'show');
   clearTimeout(comboTimer);comboTimer=setTimeout(()=>el.classList.remove('show'),gold?1800:1200);
 }
-function shakeScreen(){document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake');}
+function shakeScreen(){restart(document.body,'shake');}
 
 // ---------- particles ----------
 const Fx=(()=>{
@@ -663,6 +664,7 @@ async function revive(){
   clearWithFx({rows:filled,cols:[]});
   renderTray();
   Ads.playStart();
+  if(!tray.some(t=>t&&anyPlacement(t)))setTimeout(gameOver,350); // three rows were not enough: end it honestly
 }
 async function playAgain(){await busy($('ovAgain'),()=>Ads.between());newGame();}
 function showScores(){
@@ -680,7 +682,7 @@ function shareText(){
 }
 async function doShare(){
   const t=shareText();
-  try{if(navigator.share){await navigator.share({text:t});return;}}catch(_){}
+  try{if(navigator.share){await navigator.share({text:t});return;}}catch(e){if(e&&e.name==='AbortError')return;} // player closed the share sheet
   try{await navigator.clipboard.writeText(t);toast('Copied to clipboard');}catch(_){toast(score+' pts');}
 }
 function toast(msg){const el=$('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1400);}
@@ -701,7 +703,7 @@ $('helpBtn').onclick=()=>$('help').classList.add('show');
 $('helpClose').onclick=()=>$('help').classList.remove('show');
 $('soundBtn').onclick=()=>{Sfx.toggle();syncSoundBtn();};
 document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes button'))Sfx.click();});
-window.addEventListener('resize',()=>{layout();render();});
+window.addEventListener('resize',()=>{layout();renderBoard();if(!dragState)renderTray();});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 syncSoundBtn();
 // Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
