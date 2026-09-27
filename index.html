@@ -3,21 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#10131a">
-<title>Fair Blocks</title>
-<meta name="description" content="Fair Blocks: drag blocks onto the 8x8 grid, clear rows and columns, chase your best score. A fresh Daily board for everyone.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310131a'/%3E%3Crect x='10' y='10' width='20' height='20' rx='5' fill='%235cc8ff'/%3E%3Crect x='34' y='10' width='20' height='20' rx='5' fill='%2354e6a0'/%3E%3Crect x='10' y='34' width='20' height='20' rx='5' fill='%23ffd166'/%3E%3Crect x='34' y='34' width='20' height='20' rx='5' fill='%23ff8fb1'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#151438">
+<title>Crystal Quarry</title>
+<meta name="description" content="Crystal Quarry: drag blocks onto the stone slab, clear rows and columns, and free every gem before your moves run out. Journey levels, endless Zen and a fresh Daily board for everyone.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23151438'/%3E%3Cpath d='M22 12h20l12 14-22 28L10 26z' fill='%236ee7f0'/%3E%3Cpath d='M22 12h20l-10 14z' fill='%23d6fbff'/%3E%3Cpath d='M10 26h44L32 54z' fill='%232fb3c4'/%3E%3C/svg%3E">
 <style>
   :root{
-    --bg:#10131a; --panel:#181c26; --grid:#222838; --cell:#1c2230;
-    --ink:#e8ecf5; --muted:#8a93a8; --accent:#5cc8ff; --good:#54e6a0; --bad:#ff6b81;
+    --bg:#151438; --panel:#1d1f40; --grid:#2c3048; --cell:#161a2a;
+    --ink:#eef1fb; --muted:#9aa2c0; --accent:#6ee7f0; --good:#6ef0a8; --bad:#ff6b81;
     --r:14px; --gap:4px; --pad:6px; --gold:#ffd166;
     --ease-out:cubic-bezier(.23,1,.32,1); --ease-in-out:cubic-bezier(.77,0,.175,1);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+  html{background:var(--bg)}
   body{
-    background:radial-gradient(120% 100% at 50% -10%, #1a2030 0%, var(--bg) 60%);
+    background:var(--rock,none),radial-gradient(90% 70% at 50% 0%,rgba(92,70,200,.35),transparent 70%),linear-gradient(170deg,#1a1745 0%,#132b4d 55%,#0d3b44 100%);
+    background-attachment:fixed;
     color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     display:flex; flex-direction:column; align-items:center; gap:8px;
     padding:max(10px,env(safe-area-inset-top)) 12px 18px; min-height:100%; overflow-x:hidden; overflow-y:auto; user-select:none;
@@ -25,47 +27,73 @@
   }
   body.shake{animation:shake .3s}
   @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-2px)}}
-  header{width:100%; max-width:460px; display:flex; align-items:center; justify-content:space-between; gap:8px}
-  .logo{font-weight:800; letter-spacing:.3px; font-size:20px}
+  header{width:100%; max-width:460px; display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:auto}
+  .logo{font-weight:800; letter-spacing:.3px; font-size:20px; white-space:nowrap; --gc:var(--accent)}
   .logo span{color:var(--accent)}
-  .modes{display:flex; gap:4px; background:var(--panel); padding:4px; border-radius:999px}
-  .modes button{border:0; background:transparent; color:var(--muted); font-weight:700; font-size:13px; padding:7px 12px; border-radius:999px; cursor:pointer; transition:background-color .18s var(--ease-out), color .18s var(--ease-out), transform .16s var(--ease-out)}
-  .modes button.on{background:var(--accent); color:#04263a}
+  .modes{display:flex; gap:4px; background:var(--panel); padding:4px; border-radius:999px; box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .modes button{border:0; background:transparent; color:var(--muted); font-weight:700; font-size:13px; padding:7px 14px; border-radius:999px; cursor:pointer; transition:background-color .18s var(--ease-out), color .18s var(--ease-out), transform .16s var(--ease-out)}
+  .modes button.on{background:var(--accent); color:#10213a}
   .modes button:active{transform:scale(.96)}
   .icons{display:flex; gap:6px}
-  .ib{border:0; background:var(--panel); color:var(--ink); width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; transition:transform .16s var(--ease-out)}
+  .ib{border:0; background:var(--panel); color:var(--ink); width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; transition:transform .16s var(--ease-out); display:grid; place-items:center}
   .ib:active{transform:scale(.92)}
-  .stats{width:100%; max-width:460px; display:flex; gap:8px}
-  .stat{flex:1; background:var(--panel); border-radius:var(--r); padding:8px 12px; position:relative; overflow:hidden}
+  .ib svg{width:20px; height:20px}
+  #mapBtn, body.journey #scoresBtn{display:none}
+  body.journey #mapBtn{display:grid}
+  .stats{width:100%; max-width:460px; display:flex; gap:8px; --gc:var(--accent)}
+  .stat{flex:1; background:var(--panel); border-radius:var(--r); padding:8px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); transition:background-color .25s}
+  .stat.low{background:#4a1f35}
   .stat .k{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
-  .stat .v{font-size:22px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums}
+  .stat .v{font-size:22px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums; white-space:nowrap}
   .stat .v.bump{animation:bump .25s var(--ease-out)}
   .stat .bar{position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--accent); transform-origin:left; transform:scaleX(0); transition:transform .35s var(--ease-out); opacity:.9}
   @keyframes bump{50%{transform:scale(1.18)}}
-  .combo{color:var(--good); font-size:15px; font-weight:800; height:18px; margin:-2px 0 -4px; transition:opacity .25s var(--ease-out); opacity:0}
+  .combo{color:var(--good); font-size:15px; font-weight:800; height:18px; margin:-2px 0 -4px; transition:opacity .25s var(--ease-out); opacity:0; text-align:center; white-space:nowrap}
   .combo.show{opacity:1; animation:comboPop .35s var(--ease-out)}
   .combo.gold{color:var(--gold)}
   @keyframes comboPop{0%{transform:scale(.85)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
   .boardWrap{position:relative}
-  #board{background:var(--grid); border-radius:var(--r); padding:var(--pad); display:grid; gap:var(--gap); touch-action:none; transition:box-shadow .4s var(--ease-out)}
-  #board.s1{box-shadow:0 0 0 1px rgba(84,230,160,.25), 0 0 24px rgba(84,230,160,.12)}
-  #board.s2{box-shadow:0 0 0 2px rgba(84,230,160,.45), 0 0 36px rgba(84,230,160,.22)}
-  #board.s3{box-shadow:0 0 0 2px rgba(255,209,102,.6), 0 0 48px rgba(255,209,102,.3)}
-  .gc{background:var(--cell); border-radius:7px; transition:background-color .12s var(--ease-out), box-shadow .2s var(--ease-out)}
-  .gc.fill{box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+  /* the stone slab */
+  #board{background:var(--rock,none),linear-gradient(160deg,#454a66,#2b2f47 55%,#20233a); border-radius:var(--r); padding:var(--pad); display:grid; gap:var(--gap); touch-action:none; transition:box-shadow .4s var(--ease-out);
+    box-shadow:var(--glow,0 0 #0000),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -8px 18px rgba(0,0,0,.35),0 16px 36px rgba(0,0,0,.5)}
+  #board.s1{--glow:0 0 0 1px rgba(110,240,168,.3),0 0 24px rgba(110,240,168,.16)}
+  #board.s2{--glow:0 0 0 2px rgba(110,240,168,.5),0 0 36px rgba(110,240,168,.26)}
+  #board.s3{--glow:0 0 0 2px rgba(255,209,102,.65),0 0 48px rgba(255,209,102,.34)}
+  /* empty cell = recessed socket */
+  .gc{background-color:var(--cell); border-radius:7px; box-shadow:inset 0 3px 5px rgba(0,0,0,.6),inset 0 -1px 0 rgba(255,255,255,.06); transition:background-color .12s var(--ease-out), box-shadow .2s var(--ease-out)}
+  /* filled cell / tray piece / drag ghost = cut gem block */
+  .gc.fill,.pc.b{background-image:linear-gradient(150deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.14) 33%,rgba(255,255,255,0) 34%,rgba(0,0,0,0) 62%,rgba(0,0,0,.22) 100%);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.3),inset 0 0 0 1px rgba(0,0,0,.14)}
+  .gc.stone{position:relative; background-color:#555a70; background-image:radial-gradient(circle at 28% 22%,rgba(255,255,255,.3),transparent 45%),radial-gradient(circle at 76% 84%,rgba(0,0,0,.4),transparent 55%),var(--rock,none);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.4)}
+  .gc.gem{background-color:#6a6f86}
+  .gc.gem::before{content:''; position:absolute; inset:0; border-radius:inherit; background:radial-gradient(circle,var(--gc) 0,transparent 68%); opacity:.45; animation:glow 2.6s ease-in-out infinite; animation-delay:var(--d,0s)}
+  .gc.gem::after{content:''; position:absolute; top:8%; right:10%; width:34%; height:34%; background:#fff; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); opacity:0; animation:twinkle 2.6s ease-in-out infinite; animation-delay:var(--d,0s)}
+  .gc.gem .jewel{position:absolute; inset:15%; width:auto; height:auto; margin:0}
+  @keyframes glow{50%{opacity:.8}}
+  @keyframes twinkle{0%,55%,100%{opacity:0; transform:scale(.2) rotate(0)}72%{opacity:1; transform:scale(1) rotate(45deg)}}
+  .jewel{display:inline-block; width:1em; height:1em; vertical-align:-.12em; margin-right:.3em; background-color:var(--gc);
+    background-image:radial-gradient(circle,rgba(255,255,255,.4) 0 24%,transparent 25%),conic-gradient(from 22.5deg,rgba(255,255,255,.5) 0 45deg,rgba(255,255,255,.18) 0 90deg,rgba(0,0,0,.14) 0 135deg,rgba(0,0,0,.34) 0 180deg,rgba(0,0,0,.22) 0 225deg,rgba(255,255,255,.04) 0 270deg,rgba(255,255,255,.26) 0 315deg,rgba(255,255,255,.42) 0);
+    clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+  .fly{position:fixed; z-index:70; pointer-events:none; margin:0; will-change:transform}
   .gc.land{animation:land .2s var(--ease-out)}
   @keyframes land{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
-  .gc.ghost{outline:2px dashed rgba(255,255,255,.4); outline-offset:-2px; background:rgba(255,255,255,.08)}
+  .gc.ghost{outline:2px dashed rgba(255,255,255,.45); outline-offset:-2px; background:rgba(255,255,255,.1)}
   .gc.ghostbad{outline:2px dashed var(--bad); outline-offset:-2px}
-  .gc.hint{background:rgba(92,200,255,.18)}
-  .gc.almost{box-shadow:inset 0 0 0 2px rgba(255,255,255,.14); background:#20283a}
+  .gc.hint{background:rgba(110,231,240,.22)}
+  .gc.almost{box-shadow:inset 0 0 0 2px rgba(255,255,255,.16),inset 0 3px 5px rgba(0,0,0,.4); background-color:#232a44}
   @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.2);filter:brightness(1.8)}100%{transform:scale(0);opacity:0}}
   .gc.clear{animation:pop .3s var(--ease-in-out) forwards}
   #fx{position:absolute; inset:0; pointer-events:none}
   .popup{position:absolute; left:0; top:0; font-weight:800; font-size:18px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); pointer-events:none; transform:translate(-50%,-50%); animation:popup .8s var(--ease-out) forwards; white-space:nowrap}
   .popup.big{font-size:24px; color:var(--gold)}
   @keyframes popup{0%{opacity:0; transform:translate(-50%,-30%) scale(.8)}20%{opacity:1; transform:translate(-50%,-60%) scale(1.05)}100%{opacity:0; transform:translate(-50%,-160%) scale(1)}}
-  #tray{width:100%; max-width:460px; background:var(--panel); border-radius:var(--r); padding:12px 8px; display:flex; justify-content:space-around; align-items:center; min-height:92px}
+  #bigPop{position:absolute; left:50%; top:44%; pointer-events:none; font-weight:900; font-size:clamp(30px,7vmin,58px); line-height:1.05; color:#fff; text-align:center; white-space:pre; opacity:0;
+    text-shadow:0 0 14px var(--accent),0 0 34px rgba(110,231,240,.7),0 3px 0 rgba(0,0,0,.45)}
+  #bigPop.gold{color:#fff4cf; text-shadow:0 0 14px var(--gold),0 0 34px rgba(255,209,102,.8),0 3px 0 rgba(0,0,0,.45)}
+  #bigPop.show{animation:bigPop 1.1s var(--ease-out) forwards}
+  @keyframes bigPop{0%{opacity:0; transform:translate(-50%,-50%) scale(.4)}16%{opacity:1; transform:translate(-50%,-50%) scale(1.14)}28%{transform:translate(-50%,-50%) scale(1)}72%{opacity:1; transform:translate(-50%,-50%) scale(1)}100%{opacity:0; transform:translate(-50%,-80%) scale(1.02)}}
+  #tray{width:100%; max-width:460px; background:var(--panel); border-radius:var(--r); padding:12px 8px; display:flex; justify-content:space-around; align-items:center; min-height:92px; box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -6px 14px rgba(0,0,0,.25)}
   .slot{width:33%; display:flex; justify-content:center; align-items:center}
   .piece{display:grid; cursor:grab; touch-action:none; transition:transform .16s var(--ease-out), opacity .2s var(--ease-out)}
   .piece.in{animation:pieceIn .28s var(--ease-out)}
@@ -76,87 +104,146 @@
   .piece.dead{opacity:.28; filter:grayscale(.6)}
   .pc{border-radius:5px}
   #drag{position:fixed; left:0; top:0; display:none; gap:var(--gap); pointer-events:none; z-index:50; filter:drop-shadow(0 14px 18px rgba(0,0,0,.5)); will-change:transform}
+  #drag .pc{border-radius:7px}
+  #hand{position:fixed; left:0; top:0; width:46px; height:52px; pointer-events:none; z-index:60; display:none; filter:drop-shadow(0 4px 6px rgba(0,0,0,.55))}
   .footer{width:100%; max-width:460px; display:flex; gap:8px; justify-content:center}
-  .btn{border:0; border-radius:999px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer; background:var(--panel); color:var(--ink); transition:transform .16s var(--ease-out), opacity .16s var(--ease-out)}
-  .btn.accent{background:var(--accent); color:#04263a}
+  .btn{border:0; border-radius:999px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer; background:var(--panel); color:var(--ink); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:transform .16s var(--ease-out), opacity .16s var(--ease-out)}
+  .btn.accent{background:var(--accent); color:#10213a}
   .btn:active{transform:scale(.96)}
   .btn:disabled{opacity:.6; cursor:wait; transform:none}
-  @media (prefers-reduced-motion:reduce){
-    *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important}
-    body.shake{animation:none}
-  }
-  .seed{font-size:11px; color:var(--muted); text-align:center}
-  .overlay{position:fixed; inset:0; background:rgba(8,10,15,.8); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px}
+  .seed{font-size:11px; color:var(--muted); text-align:center; margin-bottom:auto}
+  .overlay{position:fixed; inset:0; background:rgba(9,8,28,.8); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:100; padding:20px}
   .overlay.show{display:flex}
-  .card{background:var(--panel); border-radius:20px; padding:24px 20px; max-width:340px; width:100%; text-align:center; animation:cardIn .28s var(--ease-out)}
+  .card{background:var(--panel); border-radius:20px; padding:24px 20px; max-width:340px; width:100%; text-align:center; animation:cardIn .28s var(--ease-out); box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.5)}
   @keyframes cardIn{0%{transform:translateY(14px) scale(.96);opacity:0}100%{transform:none;opacity:1}}
   .card h2{margin:0 0 6px; font-size:24px}
   .card p{color:var(--muted); margin:6px 0 14px; font-size:14px; line-height:1.5}
   .card .big{font-size:42px; font-weight:800; color:var(--accent); margin:2px 0}
   .card .sub{font-size:13px; color:var(--good); font-weight:700; min-height:16px}
+  #ovScore:empty,#ovRank:empty,#ovTop:empty{display:none}
   .card .row{display:flex; gap:8px; margin-top:12px}
   .card .row .btn{flex:1}
+  .card .btn:not(.accent){background:rgba(255,255,255,.09)}
+  .card .big:empty{display:none}
   .card ol{text-align:left; margin:0; padding:0 0 0 22px; max-height:44vh; overflow:auto}
   .card li{padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06); font-variant-numeric:tabular-nums}
   .card li b{color:var(--accent)}
   .card li small{color:var(--muted); float:right}
   .card ol.mini{max-height:none; margin:10px 0 0; font-size:13px; color:var(--muted)}
+  .stars{font-size:44px; letter-spacing:6px; line-height:1; margin:4px 0 6px; color:rgba(255,255,255,.14)}
+  .stars i{font-style:normal; display:inline-block}
+  .stars i.on{color:var(--gold); text-shadow:0 0 16px rgba(255,209,102,.6); animation:starIn .45s var(--ease-out) backwards}
+  .stars i:nth-child(2){animation-delay:.15s} .stars i:nth-child(3){animation-delay:.3s}
+  @keyframes starIn{0%{transform:scale(0) rotate(-40deg)}70%{transform:scale(1.25)}100%{transform:none}}
+  #mapPath{position:relative; height:min(58vh,460px); overflow-y:auto; margin-top:10px; border-radius:14px; background:var(--rock,none),rgba(0,0,0,.28)}
+  #mapPath svg{position:absolute; left:0; top:0; width:100%}
+  .node{position:absolute; width:50px; height:50px; margin:-25px 0 0 -25px; border:0; border-radius:50%; font-weight:800; font-size:16px; color:#10213a; background:var(--accent); cursor:pointer;
+    box-shadow:inset 0 3px 0 rgba(255,255,255,.45),inset 0 -4px 0 rgba(0,0,0,.25),0 4px 10px rgba(0,0,0,.4)}
+  .node small{position:absolute; left:50%; top:100%; transform:translateX(-50%); font-size:12px; color:var(--gold); white-space:nowrap; letter-spacing:1px}
+  .node.done{background:var(--gold)}
+  .node.cur{animation:nodePulse 1.4s ease-in-out infinite}
+  .node:disabled{background:#3a3d56; color:#7a7f98; cursor:default; box-shadow:inset 0 3px 6px rgba(0,0,0,.5)}
+  @keyframes nodePulse{50%{transform:scale(1.1)}}
   .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--good); color:#04261a; font-weight:700; padding:10px 18px; border-radius:999px; opacity:0; transition:opacity .2s; z-index:200; font-size:13px; pointer-events:none}
+  /* landscape (desktop / portal iframe): side panel, board, tray column */
+  body.landscape{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); grid-template-rows:1fr repeat(6,auto) 1fr;
+    grid-template-areas:". board tray" "head board tray" "modes board tray" "stats board tray" "combo board tray" "foot board tray" "seed board tray" ". board tray";
+    column-gap:16px; row-gap:10px; height:100%; padding:16px 12px; overflow:auto; align-items:center}
+  .landscape header,.landscape .modes,.landscape .stats,.landscape .combo,.landscape .footer,.landscape .seed{width:100%; max-width:250px; justify-self:end; margin:0}
+  .landscape header{grid-area:head; flex-wrap:wrap; justify-content:center; row-gap:10px}
+  .landscape .modes{grid-area:modes; justify-content:space-between}
+  .landscape .modes button{flex:1; padding:7px 6px}
+  .landscape .stats{grid-area:stats; flex-direction:column; gap:6px}
+  .landscape .stat{display:flex; align-items:center; justify-content:space-between; padding:9px 14px}
+  .landscape .stat .v{margin:0}
+  .landscape .combo{grid-area:combo}
+  .landscape .footer{grid-area:foot}
+  .landscape .footer .btn{flex:1}
+  .landscape .seed{grid-area:seed}
+  .landscape .boardWrap{grid-area:board}
+  .landscape #tray{grid-area:tray; justify-self:start; max-width:250px; flex-direction:column; padding:8px}
+  .landscape .slot{width:100%; flex:1}
+  /* Phones held sideways: compact the side panel so nothing scrolls or clips. */
+  @media (max-height:460px){
+    body.landscape{row-gap:5px; padding:8px 10px}
+    .landscape .stat{padding:4px 10px}
+    .landscape .stat .v{font-size:17px}
+    .landscape .logo{font-size:16px}
+    .landscape .ib{width:32px; height:32px}
+    .landscape .btn{padding:7px 10px}
+    .landscape .seed,.landscape .combo{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important}
+    body.shake{animation:none}
+  }
 </style>
 </head>
 <body>
   <header>
-    <div class="logo">Fair<span>Blocks</span></div>
-    <div class="modes">
-      <button id="mZen" class="on">Zen</button>
-      <button id="mDaily">Daily</button>
-    </div>
+    <div class="logo"><i class="jewel"></i>Crystal<span>Quarry</span></div>
     <div class="icons">
+      <button class="ib" id="mapBtn" title="Level map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
       <button class="ib" id="helpBtn" title="How to play">?</button>
       <button class="ib" id="soundBtn" title="Sound">🔊</button>
       <button class="ib" id="scoresBtn" title="Scoreboard">🏆</button>
     </div>
   </header>
+  <div class="modes">
+    <button id="mJourney">Journey</button>
+    <button id="mZen">Zen</button>
+    <button id="mDaily">Daily</button>
+  </div>
 
   <div class="stats">
-    <div class="stat"><div class="k">Score</div><div class="v" id="score">0</div><div class="bar" id="bestBar"></div></div>
-    <div class="stat"><div class="k">Best</div><div class="v" id="best">0</div></div>
-    <div class="stat"><div class="k">Streak</div><div class="v" id="streak">0</div></div>
+    <div class="stat"><div class="k" id="k1">Score</div><div class="v" id="score">0</div><div class="bar" id="bestBar"></div></div>
+    <div class="stat"><div class="k" id="k2">Best</div><div class="v" id="best">0</div></div>
+    <div class="stat"><div class="k" id="k3">Streak</div><div class="v" id="streak">0</div></div>
   </div>
   <div class="combo" id="comboMsg"></div>
 
-  <div class="boardWrap"><div id="board"></div><canvas id="fx"></canvas></div>
+  <div class="boardWrap"><div id="board"></div><canvas id="fx"></canvas><div id="bigPop"></div></div>
 
   <div id="tray"></div>
 
   <div class="footer">
-    <button class="btn" id="newGame">New game</button>
+    <button class="btn" id="newGame">New</button>
     <button class="btn" id="hintBtn">Hint</button>
-    <button class="btn accent" id="shareBtn">Share</button>
   </div>
   <div class="seed" id="seedLbl"></div>
 
   <div id="drag"></div>
+  <svg id="hand" viewBox="0 0 46 52"><path d="M10 8A5 5 0 0 1 20 8V21A4 4 0 0 1 28 22A4 4 0 0 1 35 24A4 4 0 0 1 42 27V38C42 46 36 50 29 50H24C19 50 16 48 13 44L5 33A3.4 3.4 0 0 1 10 29Z" fill="#fff" stroke="#1b1535" stroke-width="2.4" stroke-linejoin="round"/></svg>
 
   <div class="overlay" id="overlay">
     <div class="card">
       <h2 id="ovTitle">No moves left</h2>
       <p id="ovSub">Can you beat your best?</p>
+      <div class="stars" id="ovStars"><i>★</i><i>★</i><i>★</i></div>
       <div class="big" id="ovScore">0</div>
       <div class="sub" id="ovRank"></div>
       <ol id="ovTop" class="mini"></ol>
       <div class="row">
         <button class="btn" id="ovRevive">Revive</button>
         <button class="btn accent" id="ovAgain">Play again</button>
+        <button class="btn accent" id="ovNext">Next level</button>
       </div>
       <div class="row"><button class="btn" id="ovShare">Share</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="map">
+    <div class="card">
+      <h2>Quarry map</h2>
+      <div id="mapPath"></div>
+      <div class="row"><button class="btn accent" id="mapClose">Close</button></div>
     </div>
   </div>
 
   <div class="overlay" id="help">
     <div class="card">
       <h2>How to play</h2>
-      <p>Drag a block onto the 8x8 grid.<br>Fill a full row or column to clear it.<br>Clear several lines at once, and keep clearing on consecutive moves, for bigger streak bonuses.<br>When no block fits, the run ends. Daily gives everyone the same board.</p>
+      <p>Drag blocks onto the 8x8 stone slab.<br>Fill a full row or column to clear it. Gem stones in a cleared line are collected.<br><b>Journey:</b> free every gem before your moves run out.<br><b>Zen:</b> endless, chase your best. <b>Daily:</b> the same board for everyone.<br>Clear several lines at once, and on consecutive moves, for combo bonuses.</p>
       <div class="row"><button class="btn accent" id="helpClose">Got it</button></div>
     </div>
   </div>
@@ -174,7 +261,8 @@
 
 <script>
 'use strict';
-const N = 8, GAP = 4, PAD = 6, TRAY_SCALE = 0.55, MAX_TOP = 10, LINE_BASE = 10, CHROME_H = 330;
+const N = 8, GAP = 4, PAD = 6, TRAY_SCALE = 0.55, MAX_TOP = 10, LINE_BASE = 10, CHROME_H = 380;
+const ALL_CLEAR = 300, REVIVE_MOVES = 5, MAX_START = 22, JOURNEY_SHAPES = 19, MODES = {journey:'mJourney', zen:'mZen', daily:'mDaily'};
 const PALETTE = ['#5cc8ff','#54e6a0','#ffd166','#ff8fb1','#b39dff','#ff9f6b','#7ee0d2'];
 const SHAPES = [
   [[0,0]],
@@ -201,6 +289,18 @@ const Store={
   get(k,def){try{const v=localStorage.getItem(k);return v===null?def:JSON.parse(v);}catch(_){return def;}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}}
 };
+
+// ---------- rock texture: drawn once, tiled by CSS on the background, slab and stones ----------
+(function rockTexture(){
+  const S=192,c=document.createElement('canvas'),x=c.getContext('2d'),R=mulberry32(11);c.width=c.height=S;
+  for(let i=0;i<240;i++){
+    const cx=R()*S,cy=R()*S,s=2+R()*12,a=.025+R()*.05,pts=[];
+    for(let k=0;k<6;k++){const t=k/6*Math.PI*2+R()*.7,d=s*(.55+R()*.6);pts.push([Math.cos(t)*d,Math.sin(t)*d]);}
+    x.fillStyle=R()<.45?`rgba(255,255,255,${a})`:`rgba(0,0,0,${a*2})`;
+    for(const ox of [-S,0,S])for(const oy of [-S,0,S]){x.beginPath();pts.forEach(([px,py])=>x.lineTo(cx+ox+px,cy+oy+py));x.fill();} // wrapped so the tile is seamless
+  }
+  try{document.documentElement.style.setProperty('--rock',`url(${c.toDataURL()})`);}catch(_){}
+})();
 
 // ---------- sound (synth, no files) ----------
 const Sfx=(()=>{
@@ -237,6 +337,9 @@ const Sfx=(()=>{
     },
     combo(streak){tone(step(880,streak),0.16,'square',0.05);tone(step(1175,streak),0.22,'square',0.05,{delay:0.08});},
     best(){[523,659,784,1047].forEach((f,i)=>tone(f,0.22,'triangle',0.12,{delay:i*0.09}));tone(1047,0.5,'sine',0.08,{delay:0.36});},
+    gem(k){const f=step(1568,k);tone(f,0.1,'triangle',0.07);tone(f*1.5,0.16,'sine',0.05,{delay:0.045});tone(f*2,0.24,'sine',0.03,{delay:0.09});noise(0.05,0.03);},
+    win(){[523,659,784,1047].forEach((f,i)=>tone(f,0.24,'triangle',0.12,{delay:i*0.12}));[784,1047,1319].forEach(f=>tone(f,0.8,'sine',0.05,{delay:0.5}));},
+    fail(){[440,392,330,262].forEach((f,i)=>tone(f,0.34,'sine',0.08,{delay:i*0.17}));},
     click(){tone(900,0.03,'square',0.025);},
     over(){tone(330,0.5,'sawtooth',0.05,{slide:110});},
     toggle(){muted=!muted;Store.set('fb_mute',muted);return muted;},
@@ -330,66 +433,162 @@ window.fbAd=function(name){
 };
 
 // ---------- state ----------
-let mode='zen', rng=Math.random;
+let mode=Store.get('fb_mode','journey'), rng=Math.random;
+if(!MODES[mode])mode='journey';
 let grid, score, best, moves, streak, tray, revived, dragState=null, shownScore=0, bestBeaten=false;
+// Journey: level being played, gems to free (goal), freed so far (gems, shownGems once the fly lands), moves left.
+let level=journey().level, goal=0, gems=0, shownGems=0, movesLeft=0, lastStars=0, gameId=0, ended=false, startBest=0;
 const $=id=>document.getElementById(id);
 const boardEl=$('board'), trayEl=$('tray'), dragEl=$('drag'), fxCanvas=$('fx');
 
-function emptyGrid(){return Array.from({length:N},()=>Array(N).fill(null));}
-function randShape(){
-  const cells=SHAPES[Math.floor(rng()*SHAPES.length)];
-  const color=PALETTE[Math.floor(rng()*PALETTE.length)];
-  const rows=Math.max(...cells.map(c=>c[0]))+1, cols=Math.max(...cells.map(c=>c[1]))+1;
-  return {cells,color,rows,cols};
+// Normalised so an old or damaged save can never break winning a level or the map.
+function journey(){
+  const j=Store.get('fb_journey',{})||{};
+  return {level:Number.isInteger(j.level)&&j.level>0?j.level:1, stars:j.stars&&typeof j.stars==='object'?j.stars:{}};
 }
-function refillTray(){return [randShape(),randShape(),randShape()];}
+function emptyGrid(){return Array.from({length:N},()=>Array(N).fill(null));}
+function shapeOf(cells,color){return {cells,color,rows:Math.max(...cells.map(c=>c[0]))+1,cols:Math.max(...cells.map(c=>c[1]))+1};}
+// Journey leaves out the bulkiest shapes (2x3, 3x2, 5-cell Ls, 3x3): levels are about aiming at gems.
+function pool(){return mode==='journey'?SHAPES.slice(0,JOURNEY_SHAPES):SHAPES;}
+function randShape(){const P=pool();return shapeOf(P[Math.floor(rng()*P.length)],PALETTE[Math.floor(rng()*PALETTE.length)]);}
+// Journey deals fair trays from the same seeded rng: the first piece is a helpful one, and the tray
+// is rerolled until all three pieces can be placed in some order. Zen and Daily stay purely random.
+function refillTray(){
+  for(let k=0;;k++){
+    const t=[mode==='journey'?helpfulShape():randShape(),randShape(),randShape()];
+    if(mode!=='journey'||k>=30||trayFits(t))return t;
+  }
+}
+// Shapes in a seeded order: the first that frees a gem somewhere, else the first that clears any line, else random.
+function helpfulShape(){
+  const P=pool(), idx=P.map((_,i)=>i), color=PALETTE[Math.floor(rng()*PALETTE.length)];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  let any=null;
+  for(const i of idx){const p=shapeOf(P[i],color),v=clearValue(p);if(v===2)return p;if(v&&!any)any=p;}
+  return any||randShape();
+}
+// True if the pieces can all go down in some order (first free spot each, clearing lines as they fill).
+function trayFits(t){
+  const g0=grid;
+  try{
+    return [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].some(order=>{
+      grid=g0;
+      return order.every(i=>{const pos=findPlacement(t[i]);if(!pos)return false;grid=withPiece(grid,t[i],pos.r,pos.c);grid=withoutLines(grid,fullLines(grid));return true;});
+    });
+  }finally{grid=g0;}
+}
+// 2 if the piece can free a gem right now, 1 if it can clear a line, else 0.
+function clearValue(p){
+  let best=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(best===2||!canPlaceAt(p,r,c))continue;
+    const g=withPiece(grid,p,r,c), L=fullLines(g);
+    if(L.rows.length+L.cols.length)best=Math.max(best,lineCells(L).some(([a,b])=>isGem(g[a][b]))?2:1);
+  }
+  return best;
+}
+const isGem=v=>typeof v==='string'&&v.startsWith('gem:');
+const colorOf=v=>v==='rock'?'#8a8fa6':isGem(v)?v.slice(4):v;
 
-function setMode(m){mode=m;$('mZen').classList.toggle('on',m==='zen');$('mDaily').classList.toggle('on',m==='daily');newGame();}
+// ---------- journey levels ----------
+function gemCount(n){return Math.min(3+Math.floor(n/2),12);}
+function rockCount(n){return n<4?0:Math.min(1+Math.floor((n-4)/3),MAX_START-gemCount(n));}
+// Tuned with tests/test_levels.py so the greedy bot clears every early level and most later ones.
+// Tighter on the early levels so they have some tension; the level bot keeps every one winnable.
+function budget(n){return (n<=2?14:n<=10?15:18)+gemCount(n);}
+function starsFor(left,b){return left>=b*0.5?3:left>=b*0.25?2:1;}
+// Gems come in veins of up to 3 along one row or column, rocks anywhere. Stones sit on distinct cells and
+// never fill more than 6 of a row or column, so no line is complete (or one block away) at start.
+function levelGrid(n){
+  const g=emptyGrid(), gc=gemCount(n), rnd=()=>Math.floor(rng()*N);
+  let vein=null, tries=0;
+  for(let k=0;k<gc+rockCount(n);){
+    if(k<gc&&(k%3===0&&!tries||tries>40)){vein={row:rng()<0.5,i:rnd()};tries=0;}
+    const a=rnd(), b=k<gc?vein.i:rnd(), r=k<gc&&!vein.row?a:b, c=k<gc&&!vein.row?b:a;
+    if(g[r][c]||g[r].filter(Boolean).length>=N-2||g.filter(row=>row[c]).length>=N-2){tries++;continue;}
+    g[r][c]=k<gc?'gem:'+PALETTE[Math.floor(rng()*PALETTE.length)]:'rock';k++;tries=0;
+  }
+  return g;
+}
+
+function setMode(m){mode=m;Store.set('fb_mode',m);newGame();}
+function syncModeUI(){
+  for(const m in MODES)$(MODES[m]).classList.toggle('on',m===mode);
+  document.body.classList.toggle('journey',mode==='journey');
+  (mode==='journey'?['Level','Gems','Moves']:['Score','Best','Streak']).forEach((t,i)=>{$('k'+(i+1)).textContent=t;});
+  $('newGame').textContent=mode==='journey'?'Restart':'New';
+  $(mode==='journey'?'best':'score').parentElement.appendChild($('bestBar')); // gem progress in Journey, progress to best otherwise
+}
 
 function newGame(){
   if(dragState){stopDrag();dragState=null;} // a piece mid-drag must not land in the new game
+  gameId++;ended=false;lastStars=0;
   if(mode==='daily'){rng=mulberry32(hashStr('fairblocks-'+todayStr()));}
+  else if(mode==='journey'){rng=mulberry32(hashStr('quarry-level-'+level));}
   else{rng=Math.random;}
-  grid=emptyGrid();score=0;shownScore=0;moves=0;streak=0;revived=false;bestBeaten=false;
-  best=Store.get('fb_best_'+mode,0);
+  grid=mode==='journey'?levelGrid(level):emptyGrid();
+  score=0;shownScore=0;moves=0;streak=0;revived=false;bestBeaten=false;
+  goal=grid.flat().filter(isGem).length;gems=0;shownGems=0;movesLeft=budget(level);
+  best=Store.get('fb_best_'+mode,0);startBest=best;
   tray=refillTray();
   $('overlay').classList.remove('show');
-  updateSeedLabel();
+  syncModeUI();updateSeedLabel();
   layout();render();updateStats();
-  if(!Store.get('fb_seen',false))showTip('Drag a block onto the grid');
+  hideHand();
+  const id=gameId;
+  if(!Store.get('fb_seen',false))setTimeout(()=>{if(id===gameId)showHand();},400); // after the tray slide-in
+  // State the goal in one line when a level starts; level 1 teaches the rule itself.
+  if(mode==='journey')setTimeout(()=>{if(id===gameId)bigPop(level===1?'Fill a row\nto free the gems':`Level ${level}\nFree ${goal} gems`);},250);
   Ads.playStart();
 }
-function showTip(msg){const el=$('comboMsg');el.textContent=msg;el.classList.add('show');clearTimeout(comboTimer);}
 function nextDailyIn(){
   const now=new Date(), next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
   const m=Math.max(0,Math.round((next-now)/60000));
   return m>=60?`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`:`${m}m`;
 }
 function updateSeedLabel(){
-  $('seedLbl').textContent=mode==='daily'?`Daily ${todayStr()} · same board for everyone · next board in ${nextDailyIn()}`:'Zen · endless';
+  $('seedLbl').textContent=mode==='daily'?`Daily ${todayStr()} · same board for everyone · next board in ${nextDailyIn()}`
+    :mode==='journey'?`Journey · free all ${goal} gems in ${budget(level)} moves`:'Zen · endless';
 }
 setInterval(()=>{if(mode==='daily')updateSeedLabel();},30000);
 
 // ---------- sizing ----------
-let cell=40;
+let cell=40, tps=22;
+function isLandscape(){return innerWidth>=innerHeight*1.15&&innerWidth>=640;}
 function layout(){
-  const w=Math.min(window.innerWidth-24,440), h=window.innerHeight-CHROME_H;
-  const size=Math.max(200,Math.min(w,h));
+  const land=isLandscape();
+  document.body.classList.toggle('landscape',land);
+  const size=land?Math.min(innerHeight-32,innerWidth-440):Math.max(200,Math.min(innerWidth-24,440,innerHeight-CHROME_H));
   cell=Math.floor((size-2*PAD-(N-1)*GAP)/N);
   const px=cell*N+(N-1)*GAP+2*PAD;
   boardEl.style.width=px+'px';boardEl.style.height=px+'px';
   boardEl.style.gridTemplateColumns=`repeat(${N},${cell}px)`;
   fxCanvas.width=px;fxCanvas.height=px;
+  trayEl.style.height=land?px+'px':'';
+  // Landscape tray is a column: a 4-long piece must fit its width, three 4-tall pieces its height.
+  tps=land?Math.min(Math.round(cell*0.62),Math.floor((trayEl.clientWidth-25)/4),Math.floor((px-51)/12))
+    :Math.max(14,Math.round(cell*TRAY_SCALE));
 }
 
 // ---------- rendering ----------
 function render(){renderBoard();renderTray(true);}
+// Paints a cell value: block color, 'gem:'+color stone, or 'rock'.
+function paint(el,v){
+  el.classList.add('fill');
+  if(v==='rock'){el.classList.add('stone');return;}
+  if(isGem(v)){
+    el.classList.add('stone','gem');el.style.setProperty('--gc',v.slice(4));
+    el.style.setProperty('--d',(el.dataset.i*0.37%2.6).toFixed(2)+'s'); // sparkles out of step
+    el.innerHTML='<i class="jewel"></i>';return;
+  }
+  el.style.backgroundColor=v;
+}
 function renderBoard(){
   const frag=document.createDocumentFragment();
   const almost=almostCells();
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-    const d=document.createElement('div');d.className='gc';
-    if(grid[r][c]){d.classList.add('fill');d.style.background=grid[r][c];}
+    const d=document.createElement('div');d.className='gc';d.dataset.i=r*N+c;
+    if(grid[r][c])paint(d,grid[r][c]);
     else if(almost.has(r*N+c))d.classList.add('almost');
     frag.appendChild(d);
   }
@@ -413,20 +612,19 @@ function pieceEl(p,size,gap){
   for(let i=0;i<p.rows*p.cols;i++){
     const cc=document.createElement('div');cc.className='pc';
     cc.style.width=size+'px';cc.style.height=size+'px';
-    cc.style.background=filled.has(i)?p.color:'transparent';
+    if(filled.has(i)){cc.classList.add('b');cc.style.backgroundColor=p.color;}
     el.appendChild(cc);
   }
   return el;
 }
 function renderTray(animate){
-  const ps=Math.max(14,Math.round(cell*TRAY_SCALE));
   const frag=document.createDocumentFragment();
   tray.forEach((p,i)=>{
     const slot=document.createElement('div');slot.className='slot';
     if(p){
-      const el=pieceEl(p,ps,3);el.className=animate?'piece in':'piece';
+      const el=pieceEl(p,tps,3);el.className=animate?'piece in':'piece';
       if(!anyPlacement(p))el.classList.add('dead');
-      el.addEventListener('pointerdown',e=>startDrag(e,i,ps));
+      el.addEventListener('pointerdown',e=>startDrag(e,i,tps));
       slot.appendChild(el);
     }
     frag.appendChild(slot);
@@ -434,9 +632,16 @@ function renderTray(animate){
   trayEl.replaceChildren(frag);
 }
 function updateStats(){
+  boardEl.className=streak>=5?'s3':streak>=3?'s2':streak>=1?'s1':'';
+  $('streak').parentElement.classList.toggle('low',mode==='journey'&&movesLeft<=3);
+  if(mode==='journey'){
+    $('score').textContent=level;$('streak').textContent=movesLeft;
+    $('best').innerHTML=`<i class="jewel"></i>${shownGems} / ${goal}`;
+    $('bestBar').style.transform=`scaleX(${goal?shownGems/goal:0})`;
+    return;
+  }
   $('best').textContent=best;$('streak').textContent=streak;
   $('bestBar').style.transform=`scaleX(${best?Math.min(1,score/best):0})`;
-  boardEl.className=streak>=5?'s3':streak>=3?'s2':streak>=1?'s1':'';
   tickScore();
 }
 function scorePop(text,r,c,big){
@@ -444,7 +649,9 @@ function scorePop(text,r,c,big){
   const step=cell+GAP;el.style.left=(PAD+c*step+cell/2)+'px';el.style.top=(PAD+r*step+cell/2)+'px';
   boardEl.parentElement.appendChild(el);setTimeout(()=>el.remove(),850);
 }
+function bigPop(text,gold){const el=$('bigPop');el.textContent=text;el.classList.toggle('gold',!!gold);restart(el,'show');}
 function tickScore(){
+  if(mode==='journey')return; // #score shows the level there
   if(shownScore===score){$('score').textContent=score;return;}
   shownScore+=Math.ceil((score-shownScore)/6);
   $('score').textContent=shownScore;
@@ -476,16 +683,20 @@ function withPiece(g,p,br,bc){
 function withoutLines(g,{rows,cols}){
   return g.map((row,r)=>row.map((v,c)=>rows.includes(r)||cols.includes(c)?null:v));
 }
+function outOfMoves(){return mode==='journey'&&movesLeft<=0&&gems<goal;}
 
 // ---------- drag ----------
 function startDrag(e,index,ps){
-  const p=tray[index];if(!p||dragState)return;
+  const p=tray[index];if(!p||dragState||ended)return;
   e.preventDefault();
   Sfx.pick();buzz(8);
+  if(!Store.get('fb_seen',false))Store.set('fb_seen',true);
+  hideHand();
   const rect=e.currentTarget.getBoundingClientRect();
-  const grabC=Math.min(p.cols-1,Math.max(0,Math.floor((e.clientX-rect.left)/(ps+3))));
-  const grabR=Math.min(p.rows-1,Math.max(0,Math.floor((e.clientY-rect.top)/(ps+3))));
-  dragState={index,p,grabR,grabC,pointerId:e.pointerId,x:0,y:0};
+  // Grab point in cell units, so the big piece keeps the same spot under the pointer.
+  const grabC=Math.min(p.cols,Math.max(0,(e.clientX-rect.left)/(ps+3)));
+  const grabR=Math.min(p.rows,Math.max(0,(e.clientY-rect.top)/(ps+3)));
+  dragState={index,p,grabR,grabC,pointerId:e.pointerId,lift:e.pointerType==='mouse'?0:1.6,x:0,y:0,sx:e.clientX,sy:e.clientY};
   const el=pieceEl(p,cell,GAP);
   dragEl.replaceChildren(...el.children);
   dragEl.style.gridTemplateColumns=el.style.gridTemplateColumns;
@@ -513,10 +724,11 @@ function targetCell(){
 function clearGhost(){boardEl.querySelectorAll('.ghost,.ghostbad,.hint').forEach(el=>el.classList.remove('ghost','ghostbad','hint'));}
 function moveDrag(e){
   if(!dragState||e.pointerId!==dragState.pointerId)return;
-  const lift=cell*1.6, step=cell+GAP;
-  dragState.x=e.clientX-(dragState.grabC+0.5)*step;
-  dragState.y=e.clientY-(dragState.grabR+0.5)*step-lift;
-  dragEl.style.transform=`translate3d(${dragState.x}px,${dragState.y}px,0) scale(1.04)`;
+  const step=cell+GAP;
+  // Touch lifts the piece above the finger; a mouse keeps it under the cursor.
+  dragState.x=e.clientX-dragState.grabC*step;
+  dragState.y=e.clientY-dragState.grabR*step-cell*dragState.lift;
+  dragEl.style.transform=`translate3d(${dragState.x}px,${dragState.y}px,0)`;
   clearGhost();
   const {row,col}=targetCell(), ok=canPlaceAt(dragState.p,row,col);
   dragState.p.cells.forEach(([r,c])=>{
@@ -527,18 +739,49 @@ function moveDrag(e){
 function endDrag(e){
   if(!dragState||e.pointerId!==dragState.pointerId)return;
   moveDrag(e); // release position is authoritative even without a final move event
-  const {row,col}=targetCell(), {p,index}=dragState;
+  const {row,col}=targetCell(), {p,index,sx,sy}=dragState;
   stopDrag();
   dragState=null;
-  if(canPlaceAt(p,row,col))placePiece(p,row,col,index);
+  // A tap (no real movement) never places: with the touch lift it would drop the piece somewhere unintended.
+  const tapped=Math.hypot(e.clientX-sx,e.clientY-sy)<8;
+  if(!tapped&&canPlaceAt(p,row,col))placePiece(p,row,col,index);
   else renderTray();
 }
 
+// ---------- onboarding hand: loops from the first playable piece to a spot where it fits ----------
+// The spot that teaches the goal: most cells dropped into rows or columns that hold a gem, then most lines.
+function teachSpot(p){
+  const gemRow=r=>grid[r].some(isGem), gemCol=c=>grid.some(row=>isGem(row[c]));
+  let best=null,bestScore=-1;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(!canPlaceAt(p,r,c))continue;
+    const next=withPiece(grid,p,r,c),l=fullLines(next);
+    const s=p.cells.reduce((a,[dr,dc])=>a+(gemRow(r+dr)?1:0)+(gemCol(c+dc)?1:0),0)+(l.rows.length+l.cols.length)*10;
+    if(s>bestScore){bestScore=s;best={r,c};}
+  }
+  return best;
+}
+function showHand(){
+  const i=tray.findIndex(t=>t&&anyPlacement(t)), h=$('hand');
+  if(i<0||!trayEl.children[i].firstChild)return;
+  const p=tray[i], pos=teachSpot(p), a=trayEl.children[i].firstChild.getBoundingClientRect(), b=boardEl.getBoundingClientRect(), step=cell+GAP;
+  const lift=matchMedia('(pointer:coarse)').matches?cell*1.6:0;
+  const at=(x,y,s)=>`translate(${x-15}px,${y-3}px) scale(${s})`; // fingertip sits at (15,3) in the svg
+  const x0=a.left+a.width/2, y0=a.top+a.height/2, x1=b.left+PAD+(pos.c+p.cols/2)*step, y1=b.top+PAD+(pos.r+p.rows/2)*step+lift;
+  h.style.display='block';
+  h.getAnimations().forEach(an=>an.cancel());
+  h.animate([
+    {transform:at(x0,y0+20,1),opacity:0},{transform:at(x0,y0,1),opacity:1,offset:.15},{transform:at(x0,y0,.88),offset:.25},
+    {transform:at(x1,y1,.88),offset:.7},{transform:at(x1,y1,1),opacity:1,offset:.82},{transform:at(x1,y1,1),opacity:0}
+  ],{duration:2400,iterations:Infinity,easing:'ease-in-out'});
+}
+function hideHand(){const h=$('hand');h.getAnimations().forEach(an=>an.cancel());h.style.display='none';}
+
 // ---------- turn ----------
 function placePiece(p,br,bc,idx){
-  if(!Store.get('fb_seen',false)){Store.set('fb_seen',true);$('comboMsg').classList.remove('show');}
   grid=withPiece(grid,p,br,bc);
   score+=p.cells.length;moves++;
+  if(mode==='journey')movesLeft--;
   tray=tray.map((t,i)=>i===idx?null:t);
   Sfx.place();buzz(10);
   const lines=fullLines(grid), n=lines.rows.length+lines.cols.length;
@@ -546,44 +789,69 @@ function placePiece(p,br,bc,idx){
     streak++;
     const pts=LINE_BASE*n*n*streak;
     score+=pts;
-    flashCombo(n>1?`${n} lines · streak x${streak}  +${pts}`:`Line clear · streak x${streak}  +${pts}`);
     Sfx.clear(n,streak);buzz([20,30,40]);
     if(n>=2||streak>=3){Sfx.combo(streak);bump('streak');}
     if(n>=3)shakeScreen();
     const at=lines.rows.length?[lines.rows[0],3.5]:[3.5,lines.cols[0]];
     scorePop(`+${pts}`,at[0],at[1],n>=2||streak>=3);
+    const allClear=withoutLines(grid,lines).every(row=>row.every(v=>!v));
+    if(allClear){score+=ALL_CLEAR;Fx.confetti();}
+    const words=[n>=4?'Mega!':n===3?'Triple!':n===2?'Double!':'',streak>=2?`Combo x${streak}!`:'',allClear?`+${ALL_CLEAR} All Clear!`:''].filter(Boolean);
+    // One announcement per clear: the big pop for combos, otherwise the small line.
+    if(words.length)bigPop(words.join('\n'),allClear||n>=3);else flashCombo(`Line clear  +${pts}`);
   }else{streak=0;}
-  const refilled=tray.every(t=>t===null);
-  if(refilled)tray=refillTray();
-  if(score>best){
-    const hadBest=best>0;
+  if(mode!=='journey'&&score>best){
+    const hadBest=startBest>0; // the best from before this run, so a first-ever run never fakes a "New best"
     best=score;Store.set('fb_best_'+mode,best);bump('best');
     if(hadBest&&!bestBeaten){bestBeaten=true;Sfx.best();buzz([30,40,30,40,80]);Fx.confetti();Ads.happy();setTimeout(()=>flashCombo('New best!',true),n?350:0);}
   }
   if(n)clearWithFx(lines);else renderBoard();
   p.cells.forEach(([r,c])=>boardEl.children[(br+r)*N+bc+c].classList.add('land'));
+  const refilled=tray.every(t=>t===null);
+  if(refilled)tray=refillTray(); // after the clear, so a Journey tray is dealt for the board the player sees
   renderTray(refilled);updateStats();
-  if(!tray.some(t=>t&&anyPlacement(t)))setTimeout(gameOver,n?320:120);
+  endCheck(n?320:120);
+}
+// After a move or a revive: win, out of moves, or stuck.
+function endCheck(delay){
+  const id=gameId;
+  // Celebrate only after the last gem has landed on the counter.
+  if(mode==='journey'&&gems>=goal){ended=true;setTimeout(()=>{if(id===gameId)levelWon();},Math.max(750,flightsEnd-Date.now()+120));return;}
+  // Lock input immediately: a fast drag before the card appears must not beat the move budget.
+  if(outOfMoves()||!tray.some(t=>t&&anyPlacement(t))){ended=true;setTimeout(()=>{if(id===gameId)gameOver();},delay);}
 }
 function lineCells({rows,cols}){
   const out=[];
-  rows.forEach(r=>{for(let c=0;c<N;c++)out.push([r,c]);});
-  cols.forEach(c=>{for(let r=0;r<N;r++)out.push([r,c]);});
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(rows.includes(r)||cols.includes(c))out.push([r,c]);
   return out;
 }
-// Removes the lines from state, re-renders, then plays the pop + particle burst on the freed cells.
+// Removes the lines from state, re-renders, then plays the pop + particle burst on the freed cells. Gems fly to the HUD.
 function clearWithFx(lines){
   const before=grid, cells=lineCells(lines), step=cell+GAP;
   grid=withoutLines(grid,lines);
   renderBoard();
+  let k=0;
   const els=cells.map(([r,c])=>{
-    const color=before[r][c]||'#fff', el=boardEl.children[r*N+c];
-    el.style.background=color;el.classList.add('fill','clear');
-    Fx.burst(PAD+c*step+cell/2,PAD+r*step+cell/2,color);
+    const v=before[r][c]||'#fff', el=boardEl.children[r*N+c];
+    paint(el,v);el.classList.add('clear');
+    Fx.burst(PAD+c*step+cell/2,PAD+r*step+cell/2,colorOf(v));
+    if(isGem(v)){gems++;flyGem(el,v.slice(4),k);flightsEnd=Date.now()+620+k*90;k++;}
     return el;
   });
-  setTimeout(()=>els.forEach(el=>{if(el.isConnected&&el.classList.contains('clear')){el.style.background='';el.classList.remove('fill','clear');}}),300);
+  setTimeout(()=>els.forEach(el=>{if(el.isConnected&&el.classList.contains('clear')){el.className='gc';el.style.cssText='';el.textContent='';}}),300);
 }
+// A freed gem flies from its cell to the gem counter, which ticks when it lands.
+function flyGem(from,color,k){
+  const id=gameId, a=from.getBoundingClientRect(), t=($('best').querySelector('.jewel')||$('best')).getBoundingClientRect();
+  const el=document.createElement('i');el.className='jewel fly';el.style.setProperty('--gc',color);
+  el.style.cssText+=`;left:${a.left+a.width*.15}px;top:${a.top+a.height*.15}px;width:${a.width*.7}px;height:${a.height*.7}px`;
+  document.body.appendChild(el);
+  const dx=t.left+t.width/2-(a.left+a.width/2), dy=t.top+t.height/2-(a.top+a.height/2), s=Math.max(.3,t.width/(a.width*.7));
+  const an=el.animate([{transform:'none'},{transform:`translate(${dx*.25}px,${dy*.25-50}px) scale(1.35) rotate(90deg)`,offset:.35},{transform:`translate(${dx}px,${dy}px) scale(${s}) rotate(200deg)`}],
+    {duration:620,delay:k*90,easing:'cubic-bezier(.45,0,.55,1)',fill:'backwards'});
+  an.onfinish=()=>{el.remove();if(id!==gameId)return;shownGems=Math.min(goal,shownGems+1);Sfx.gem(shownGems);bump('best');updateStats();};
+}
+let flightsEnd=0;
 
 let comboTimer=null;
 function flashCombo(msg,gold){
@@ -628,7 +896,7 @@ function showHint(){
   setTimeout(clearGhost,900);
 }
 
-// ---------- game over / top scores ----------
+// ---------- end cards / top scores ----------
 function topKey(){return 'fb_top_'+mode;}
 function recordScore(){
   const list=Store.get(topKey(),[]).concat([{s:score,m:moves,d:todayStr()}]).sort((a,b)=>b.s-a.s).slice(0,MAX_TOP);
@@ -636,17 +904,45 @@ function recordScore(){
   return list.findIndex(e=>e.s===score&&e.m===moves&&e.d===todayStr())+1;
 }
 function scoreItem(e){const li=document.createElement('li');li.innerHTML=`<b>${e.s}</b> pts · ${e.m} moves <small>${e.d}</small>`;return li;}
-function gameOver(){
-  if(tray.some(t=>t&&anyPlacement(t)))return; // stale timer after a restart
-  Ads.playStop();Sfx.over();buzz(60);
-  const rank=recordScore();
-  $('ovScore').textContent=score;
-  $('ovTitle').textContent=mode==='daily'?'Daily complete':'No moves left';
-  $('ovSub').textContent=mode==='daily'?'Same board for everyone today. Share your run.':'Can you beat your best?';
-  $('ovRank').textContent=rank?`#${rank} on your scoreboard`:'';
-  $('ovTop').replaceChildren(...Store.get(topKey(),[]).slice(0,3).map(scoreItem));
-  $('ovRevive').style.display=revived?'none':'';
+function showCard({title,sub,big='',rank='',top=[],stars=0,revive=false,reviveLabel='Revive',again='Play again',next=false,share=true}){
+  $('ovTitle').textContent=title;$('ovSub').textContent=sub;$('ovScore').textContent=big;$('ovRank').textContent=rank;
+  $('ovShare').style.display=share?'':'none';
+  $('ovTop').replaceChildren(...top);
+  $('ovStars').style.display=stars?'':'none';
+  [...$('ovStars').children].forEach((s,i)=>s.classList.toggle('on',i<stars));
+  $('ovRevive').style.display=revive?'':'none';$('ovRevive').textContent=reviveLabel;
+  $('ovAgain').textContent=again;$('ovAgain').classList.toggle('accent',!next);
+  $('ovNext').style.display=next?'':'none';
   $('overlay').classList.add('show');
+}
+function gameOver(){
+  const oom=outOfMoves();
+  if(!oom&&tray.some(t=>t&&anyPlacement(t)))return; // stale timer after a restart
+  Ads.playStop();buzz(60);
+  if(mode==='journey'){
+    Sfx.fail();
+    // Honest titles: "no room" when nothing fits even though moves remain.
+    const stuck=!tray.some(t=>t&&anyPlacement(t));
+    showCard({title:oom?'Out of moves':'No room left',sub:`Level ${level} · gems freed`,big:`${gems} / ${goal}`,
+      revive:!revived,reviveLabel:stuck&&oom?`Clear rows, +${REVIVE_MOVES} moves`:stuck?'Clear 3 rows':`+${REVIVE_MOVES} moves`,again:'Retry',share:false});
+    return;
+  }
+  Sfx.over();
+  const rank=recordScore();
+  showCard({title:mode==='daily'?'Daily complete':'No moves left',sub:mode==='daily'?'Same board for everyone today. Share your run.':'Can you beat your best?',
+    big:score,rank:rank?`#${rank} on your scoreboard`:'',top:Store.get(topKey(),[]).slice(0,3).map(scoreItem),revive:!revived});
+}
+// Level complete: fanfare and confetti over the board first, then the card.
+function levelWon(){
+  const id=gameId, j=journey();
+  shownGems=goal;updateStats(); // the HUD always reads x / x on the win card
+  lastStars=starsFor(movesLeft,budget(level));
+  j.stars[level]=Math.max(j.stars[level]||0,lastStars);j.level=Math.max(j.level,level+1);Store.set('fb_journey',j);
+  Ads.playStop();Ads.happy();Sfx.win();Fx.confetti();buzz([30,40,30,40,80]);
+  bigPop(`Level ${level}\ncomplete!`,true);
+  setTimeout(()=>{if(id!==gameId)return;
+    showCard({title:`Level ${level} complete`,sub:`All ${goal} gems freed with ${movesLeft} ${movesLeft===1?'move':'moves'} to spare`,stars:lastStars,again:'Replay',next:true});
+  },900);
 }
 // Shows a busy state on an overlay button while a portal ad is requested, so it never looks dead.
 async function busy(btn,work){
@@ -657,15 +953,21 @@ async function revive(){
   const ok=await busy($('ovRevive'),()=>Ads.rewarded());
   if(!$('overlay').classList.contains('show'))return; // player restarted while the ad ran
   if(!ok){toast('No reward available');return;}
-  revived=true;
-  const filled=grid.map((row,r)=>({r,n:row.filter(Boolean).length})).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.r);
+  revived=true;ended=false;
   $('overlay').classList.remove('show');
-  clearWithFx({rows:filled,cols:[]});
-  renderTray();
+  // Stuck boards get rows cleared (even if moves also ran out); a board with room just gets moves.
+  if(!tray.some(t=>t&&anyPlacement(t))){
+    const filled=grid.map((row,r)=>({r,n:row.filter(Boolean).length})).sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.r);
+    clearWithFx({rows:filled,cols:[]});
+    renderTray();
+  }
+  if(outOfMoves())movesLeft+=REVIVE_MOVES;
+  updateStats();
   Ads.playStart();
-  if(!tray.some(t=>t&&anyPlacement(t)))setTimeout(gameOver,350); // three rows were not enough: end it honestly
+  endCheck(350); // three rows were not enough: end it honestly
 }
 async function playAgain(){await busy($('ovAgain'),()=>Ads.between());newGame();}
+async function nextLevel(){await busy($('ovNext'),()=>Ads.between());level++;newGame();}
 function showScores(){
   const list=Store.get(topKey(),[]);
   $('scoresMode').textContent=mode==='daily'?'Daily runs':'Zen runs';
@@ -674,35 +976,59 @@ function showScores(){
   $('scores').classList.add('show');
 }
 
+// ---------- level map: a winding path, level 1 at the top ----------
+function showMap(){
+  const j=journey(), count=Math.max(30,j.level+10), H=78, top=62, pts=[];
+  let html='';
+  for(let n=1;n<=count;n++){
+    const x=50+30*Math.sin(n*0.9), y=top+(n-1)*H, s=j.stars[n]||0, locked=n>j.level;pts.push(`${x},${y}`);
+    html+=`<button class="node${s?' done':''}${n===level?' cur':''}" data-l="${n}" style="left:${x}%;top:${y}px"${locked?' disabled':''}>${n}${s?`<small>${'★'.repeat(s)}${'☆'.repeat(3-s)}</small>`:''}</button>`;
+  }
+  const h=top*2+(count-1)*H;
+  $('mapPath').innerHTML=`<div style="position:relative;height:${h}px"><svg viewBox="0 0 100 ${h}" height="${h}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="6" stroke-dasharray="2 10" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>${html}</div>`;
+  Ads.playStop();
+  $('map').classList.add('show');
+  $('mapPath').scrollTop=Math.max(0,top+(level-1)*H-$('mapPath').clientHeight/2);
+}
+function closeMap(){$('map').classList.remove('show');Ads.playStart();}
+$('mapPath').onclick=e=>{
+  const b=e.target.closest('.node');if(!b||b.disabled)return;
+  level=+b.dataset.l;$('map').classList.remove('show');
+  if(mode!=='journey')setMode('journey');else newGame();
+};
+
 // ---------- share ----------
 function shareText(){
+  if(mode==='journey')return `Crystal Quarry - Level ${level}${lastStars?' '+'★'.repeat(lastStars):''}\nCan you free every gem?`;
   const d=mode==='daily'?'Daily '+todayStr():'Zen';
-  return `Fair Blocks - ${d}\nScore ${score} · ${moves} moves\nCan you beat it?`;
+  return `Crystal Quarry - ${d}\nScore ${score} · ${moves} moves\nCan you beat it?`;
 }
 async function doShare(){
   const t=shareText();
   try{if(navigator.share){await navigator.share({text:t});return;}}catch(e){if(e&&e.name==='AbortError')return;} // player closed the share sheet
-  try{await navigator.clipboard.writeText(t);toast('Copied to clipboard');}catch(_){toast(score+' pts');}
+  try{await navigator.clipboard.writeText(t);toast('Copied to clipboard');}catch(_){toast(t.split('\n')[0]);}
 }
 function toast(msg){const el=$('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1400);}
 function syncSoundBtn(){$('soundBtn').textContent=Sfx.muted?'🔇':'🔊';}
 
 // ---------- wiring ----------
-$('mZen').onclick=()=>setMode('zen');
-$('mDaily').onclick=()=>setMode('daily');
+for(const m in MODES)$(MODES[m]).onclick=()=>setMode(m);
 $('newGame').onclick=newGame;
 $('hintBtn').onclick=showHint;
-$('shareBtn').onclick=doShare;
 $('ovShare').onclick=doShare;
 $('ovAgain').onclick=playAgain;
+$('ovNext').onclick=nextLevel;
 $('ovRevive').onclick=revive;
+$('mapBtn').onclick=showMap;
+$('mapClose').onclick=closeMap;
 $('scoresBtn').onclick=showScores;
 $('scoresClose').onclick=()=>$('scores').classList.remove('show');
 $('helpBtn').onclick=()=>$('help').classList.add('show');
 $('helpClose').onclick=()=>$('help').classList.remove('show');
 $('soundBtn').onclick=()=>{Sfx.toggle();syncSoundBtn();};
-document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes button'))Sfx.click();});
-window.addEventListener('resize',()=>{layout();renderBoard();if(!dragState)renderTray();});
+document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes button,.node'))Sfx.click();});
+// A resize mid-drag drops the drag (the ghost was sized for the old layout) and redraws cleanly.
+window.addEventListener('resize',()=>{if(dragState){stopDrag();dragState=null;}layout();renderBoard();renderTray();if($('hand').style.display==='block')showHand();});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 syncSoundBtn();
 // Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
