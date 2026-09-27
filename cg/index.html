@@ -181,6 +181,13 @@
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
+  <div class="overlay show" id="progressStatus" role="dialog" aria-modal="true" aria-labelledby="progressTitle" style="z-index:300">
+    <div class="card">
+      <h2 id="progressTitle">Loading progress</h2>
+      <p id="progressMessage" role="status">Getting your saved game ready.</p>
+      <button class="btn accent" id="progressRetry" hidden>Retry</button>
+    </div>
+  </div>
   <header>
     <div class="logo"><i class="jewel"></i>Crystal<span>Quarry</span></div>
     <div class="icons">
@@ -287,8 +294,29 @@ function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 
 // ---------- storage (safe in iframes / private mode) ----------
 const Store={
-  get(k,def){try{const v=localStorage.getItem(k);return v===null?def:JSON.parse(v);}catch(_){return def;}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}}
+  ready:false,
+  cloud:false,
+  failed:false,
+  init(){
+    this.cloud=Ads.sdk==='cg';
+    if(this.cloud){
+      const data=window.CrazyGames.SDK.data;
+      if(!data||typeof data.getItem!=='function'||typeof data.setItem!=='function')throw new Error('CrazyGames Data module unavailable');
+    }
+    this.ready=true;
+  },
+  get(k,def){
+    if(!this.ready||this.failed)throw new Error('Progress storage unavailable');
+    try{
+      const v=(this.cloud?window.CrazyGames.SDK.data:localStorage).getItem(k);
+      return v===null?def:JSON.parse(v);
+    }catch(e){if(this.cloud){this.failed=true;progressError(e);throw e;}return def;}
+  },
+  set(k,v){
+    if(!this.ready||this.failed)throw new Error('Progress storage unavailable');
+    try{(this.cloud?window.CrazyGames.SDK.data:localStorage).setItem(k,JSON.stringify(v));}
+    catch(e){if(this.cloud){this.failed=true;progressError(e);throw e;}}
+  }
 };
 
 // ---------- rock texture: drawn once, tiled by CSS on the background, slab and stones ----------
@@ -305,7 +333,7 @@ const Store={
 
 // ---------- sound (synth, no files) ----------
 const Sfx=(()=>{
-  let ctx=null, muted=Store.get('fb_mute',false), adMuted=false;
+  let ctx=null, muted=false, adMuted=false;
   function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume().catch(()=>{});return ctx;}
   // f: Hz, d: seconds, slide: end frequency for a pitch glide, delay: seconds from now
   function tone(f,d,type,g,{slide=null,delay=0,attack=0.004}={}){
@@ -330,6 +358,7 @@ const Sfx=(()=>{
   }
   const step=(n,streak)=>Math.pow(1.06,Math.min(streak,8))*n; // pitch climbs with the streak
   return{
+    load(){muted=Store.get('fb_mute',false);},
     pick(){tone(520,0.05,'triangle',0.05,{slide:700});},
     place(){tone(180,0.09,'sine',0.16,{slide:120});noise(0.03,0.06);},
     clear(n,streak){
@@ -353,6 +382,12 @@ function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
 
 // ---------- ads adapter: rewarded (revive) and between rounds only, never mid-round ----------
 const AD_NOFILL_MS=4000, AD_TIMEOUT=90000;
+function sdkReady(init){
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error('SDK initialization timed out')),12000);
+    Promise.resolve().then(init).then(resolve,reject).finally(()=>clearTimeout(timer));
+  });
+}
 const Ads={
   sdk:null,
   ysdk:null,
@@ -360,14 +395,15 @@ const Ads={
   _started:null,
   _pending:null,
   async init(){
+    const crazy=!!(window.CrazyGames||document.querySelector('script[src*="sdk.crazygames.com"]'));
     try{
-      if(window.CrazyGames&&window.CrazyGames.SDK){await window.CrazyGames.SDK.init();this.sdk='cg';}
-      else if(window.PokiSDK){await window.PokiSDK.init();window.PokiSDK.gameLoadingFinished();this.sdk='poki';}
+      if(crazy){await sdkReady(()=>window.CrazyGames.SDK.init());this.sdk='cg';}
+      else if(window.PokiSDK){await sdkReady(()=>window.PokiSDK.init());window.PokiSDK.gameLoadingFinished();this.sdk='poki';}
       else if(window.GamePix){this.sdk='gpix';}
-      else if(window.YaGames){this.ysdk=await window.YaGames.init();this.sdk='ya';}
+      else if(window.YaGames){this.ysdk=await sdkReady(()=>window.YaGames.init());this.sdk='ya';}
       else if(window.y8Sdk){this.sdk='y8';}
       else if(window.SDK_OPTIONS&&window.SDK_OPTIONS.gameId){this.sdk='gm';}
-    }catch(e){this.sdk=null;console.warn('Ads: SDK init failed, running without ads',e);}
+    }catch(e){this.sdk=null;if(crazy)throw e;console.warn('Ads: SDK init failed, running without ads',e);}
   },
   cg(){try{return window.CrazyGames.SDK.game;}catch(_){return null;}},
   ya(){try{return this.ysdk.features;}catch(_){return null;}},
@@ -434,11 +470,10 @@ window.fbAd=function(name){
 };
 
 // ---------- state ----------
-let mode=Store.get('fb_mode','journey'), rng=Math.random;
-if(!MODES[mode])mode='journey';
+let mode='journey', rng=Math.random, gameReady=false;
 let grid, score, best, moves, streak, tray, revived, dragState=null, shownScore=0, bestBeaten=false;
 // Journey: level being played, gems to free (goal), freed so far (gems, shownGems once the fly lands), moves left.
-let level=journey().level, goal=0, gems=0, shownGems=0, movesLeft=0, lastStars=0, gameId=0, ended=false, startBest=0;
+let level=1, goal=0, gems=0, shownGems=0, movesLeft=0, lastStars=0, gameId=0, ended=false, startBest=0;
 const $=id=>document.getElementById(id);
 const boardEl=$('board'), trayEl=$('tray'), dragEl=$('drag'), fxCanvas=$('fx');
 
@@ -1029,11 +1064,38 @@ $('helpClose').onclick=()=>$('help').classList.remove('show');
 $('soundBtn').onclick=()=>{Sfx.toggle();syncSoundBtn();};
 document.addEventListener('pointerdown',e=>{if(e.target.closest('.btn,.ib,.modes button,.node'))Sfx.click();});
 // A resize mid-drag drops the drag (the ghost was sized for the old layout) and redraws cleanly.
-window.addEventListener('resize',()=>{if(dragState){stopDrag();dragState=null;}layout();renderBoard();renderTray();if($('hand').style.display==='block')showHand();});
+window.addEventListener('resize',()=>{if(!gameReady)return;if(dragState){stopDrag();dragState=null;}layout();renderBoard();renderTray();if($('hand').style.display==='block')showHand();});
 document.addEventListener('contextmenu',e=>e.preventDefault());
-syncSoundBtn();
-// Board first, then the portal's preroll (only when a portal SDK is actually present; standalone shows nothing).
-Ads.init().finally(()=>{newGame();Ads.loaded();if(Ads.sdk)Ads.between();});
+function progressScreen(show){
+  for(const el of document.body.children)if(el.id!=='progressStatus'&&el.tagName!=='SCRIPT')el.inert=show;
+  $('progressStatus').classList.toggle('show',show);
+}
+function progressError(error){
+  gameReady=false;
+  Sfx.suspend(true);
+  try{Ads.playStop();}catch(_){}
+  console.warn('Progress unavailable',error);
+  $('progressTitle').textContent='Progress unavailable';
+  $('progressMessage').textContent='Your saved game could not be loaded or saved. Retry to reconnect before continuing.';
+  $('progressRetry').hidden=false;
+  progressScreen(true);
+  $('progressRetry').focus();
+}
+$('progressRetry').onclick=()=>location.reload();
+progressScreen(true);
+// Load the portal and its saves before creating the first board or reading settings.
+(async()=>{
+  try{
+    await Ads.init();
+    Store.init();
+    mode=Store.get('fb_mode','journey');if(!MODES[mode])mode='journey';
+    level=journey().level;
+    Sfx.load();syncSoundBtn();
+    newGame();
+    gameReady=true;progressScreen(false);
+    Ads.loaded();if(Ads.sdk)Ads.between();
+  }catch(e){progressError(e);}
+})();
 </script>
 </body>
 </html>
