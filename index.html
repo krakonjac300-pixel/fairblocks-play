@@ -25,7 +25,7 @@
     background-attachment:fixed;
     color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     display:flex; flex-direction:column; align-items:center; gap:8px;
-    padding:max(10px,env(safe-area-inset-top)) 12px 18px; min-height:100%; overflow-x:hidden; overflow-y:auto; user-select:none;
+    padding:max(10px,env(safe-area-inset-top)) 12px 18px; min-height:100%; overflow-x:hidden; overflow-y:auto; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
     touch-action:pan-y;
   }
   body.shake{animation:shake .3s}
@@ -38,6 +38,7 @@
   .modes button.on{background:var(--accent); color:#10213a}
   .modes button:active{transform:scale(.96)}
   .icons{display:flex; gap:6px}
+  .ib svg{width:18px; height:18px}
   .ib{border:0; background:var(--panel); color:var(--ink); width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; transition:transform .16s var(--ease-out); display:grid; place-items:center}
   .ib:active{transform:scale(.92)}
   .ib svg{width:20px; height:20px}
@@ -65,7 +66,7 @@
   /* empty cell = recessed socket */
   .gc{background-color:var(--cell); border-radius:7px; box-shadow:inset 0 3px 5px rgba(0,0,0,.6),inset 0 -1px 0 rgba(255,255,255,.06); transition:background-color .12s var(--ease-out), box-shadow .2s var(--ease-out)}
   /* filled cell / tray piece / drag ghost = cut gem block */
-  .gc.fill,.pc.b{background-image:linear-gradient(150deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.14) 33%,rgba(255,255,255,0) 34%,rgba(0,0,0,0) 62%,rgba(0,0,0,.22) 100%);
+  .gc.fill,.pc.b{background-image:linear-gradient(135deg,rgba(255,255,255,.34) 0 17%,transparent 17%),linear-gradient(315deg,rgba(0,0,0,.16) 0 17%,transparent 17%),linear-gradient(150deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.14) 33%,rgba(255,255,255,0) 34%,rgba(0,0,0,0) 62%,rgba(0,0,0,.22) 100%);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.3),inset 0 0 0 1px rgba(0,0,0,.14)}
   .gc.stone{position:relative; background-color:#555a70; background-image:radial-gradient(circle at 28% 22%,rgba(255,255,255,.3),transparent 45%),radial-gradient(circle at 76% 84%,rgba(0,0,0,.4),transparent 55%),var(--rock,none);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.4)}
@@ -74,12 +75,14 @@
   .gc.gem::after{content:''; position:absolute; top:8%; right:10%; width:34%; height:34%; background:#fff; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); opacity:0; animation:twinkle 2.6s ease-in-out infinite; animation-delay:var(--d,0s)}
   .gc.gem .jewel{position:absolute; inset:15%; width:auto; height:auto; margin:0}
   /* geode: the gem shows dimly through a cracked crust */
-  .gc.geo .jewel{opacity:.9; filter:saturate(.8)}
-  .gc.geo::before{opacity:.12; animation:none}
-  .gc.geo::after{top:0; right:0; width:auto; height:auto; inset:0; opacity:1; animation:none; clip-path:none; border-radius:inherit;
-    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M3 9l9 6 5-7 6 11 14-4M5 31l9-7 5 6 8-9 10 7M19 19l2 8' fill='none' stroke='rgba(235,240,255,.75)' stroke-width='1.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat,
-      radial-gradient(circle at 50% 50%,rgba(120,126,150,.35) 20%,rgba(78,83,104,.78) 72%)}
+  .gc.geo{background-color:#454a5e}
+  .gc.geo .jewel{opacity:0}
+  .gc.geo::before{background:radial-gradient(circle,var(--gc) 0,transparent 45%); opacity:.35; animation:glow 2.6s ease-in-out infinite; animation-delay:var(--d,0s)}
+  .gc.geo::after{top:40%; right:auto; left:8%; width:84%; height:20%; opacity:1; animation:none; background:var(--gc);
+    clip-path:polygon(0 45%,14% 0,30% 60%,46% 5%,62% 70%,78% 10%,92% 55%,100% 35%,100% 65%,92% 95%,78% 50%,62% 100%,46% 45%,30% 100%,14% 40%,0 60%);
+    filter:drop-shadow(0 0 3px var(--gc)) brightness(1.25)}
   .gc.crack{animation:crack .45s var(--ease-out)}
+  body.adpause #board,body.adpause #tray,body.adpause .footer{pointer-events:none}
   @keyframes crack{0%{transform:none}25%{transform:scale(1.16) rotate(-5deg); filter:brightness(1.7)}55%{transform:scale(.96) rotate(3deg)}100%{transform:none}}
   @keyframes glow{50%{opacity:.8}}
   @keyframes twinkle{0%,55%,100%{opacity:0; transform:scale(.2) rotate(0)}72%{opacity:1; transform:scale(1) rotate(45deg)}}
@@ -131,6 +134,14 @@
   .legend{list-style:none; padding:0; margin:4px 0 10px; text-align:left; display:grid; gap:8px}
   .legend li{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); line-height:1.35}
   .legend .gc{flex:none; width:34px; height:34px; display:block}
+  @media (max-height:500px){
+    .card{padding:12px 16px}
+    .card h2{font-size:19px; margin-bottom:2px}
+    .card p{margin:3px 0 7px; font-size:12.5px; line-height:1.35}
+    .legend{gap:3px; margin:2px 0 6px}
+    .legend li{font-size:12.5px}
+    .legend .gc{width:24px; height:24px}
+  }
   .card h2{margin:0 0 6px; font-size:24px}
   .card p{color:var(--muted); margin:6px 0 14px; font-size:14px; line-height:1.5}
   .card .big{font-size:42px; font-weight:800; color:var(--accent); margin:2px 0}
@@ -209,9 +220,9 @@
     <div class="logo"><i class="jewel"></i>Crystal <span>Quarry</span></div>
     <div class="icons">
       <button class="ib" id="mapBtn" title="Level map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
-      <button class="ib" id="helpBtn" title="How to play">?</button>
-      <button class="ib" id="soundBtn" title="Sound">🔊</button>
-      <button class="ib" id="scoresBtn" title="Scoreboard">🏆</button>
+      <button class="ib" id="helpBtn" title="How to play" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9"/><path d="M12 17h.01"/></svg></button>
+      <button class="ib" id="soundBtn" title="Sound" aria-label="Sound on" aria-pressed="true"></button>
+      <button class="ib" id="scoresBtn" title="Scoreboard" aria-label="Scoreboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M16 5h3v2a3 3 0 0 1-3 3M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4M8.5 20h7M10 17h4"/></svg></button>
     </div>
   </header>
   <div class="modes">
@@ -271,7 +282,7 @@
       <p>Drag blocks onto the 8x8 slab. Fill a full row or column to clear it.</p>
       <ul class="legend">
         <li><span class="gc fill stone gem" style="--gc:#5cc8ff"><i class="jewel"></i></span><span><b>Gem</b> is freed when its line clears.</span></li>
-        <li><span class="gc fill stone gem geo" style="--gc:#b39dff"><i class="jewel"></i></span><span><b>Geode</b> cracks on the first clear, frees on the second.</span></li>
+        <li><span class="gc fill stone gem geo" style="--gc:#b39dff"><i class="jewel"></i></span><span><b>Geode</b> opens into a gem on the first clear; the next clear frees it.</span></li>
         <li><span class="gc fill stone"></span><span><b>Rock</b> just takes up room until its line clears.</span></li>
       </ul>
       <p><b>Journey:</b> free every gem before your moves run out. <b>Zen:</b> endless, chase your best. <b>Daily:</b> the same board for everyone. Clear several lines at once, or on back-to-back moves, for combo bonuses.</p>
@@ -285,6 +296,14 @@
       <p id="scoresMode"></p>
       <ol id="scoresList"></ol>
       <div class="row"><button class="btn accent" id="scoresClose">Close</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="startGate">
+    <div class="card">
+      <h2>Crystal <span style="color:var(--accent)">Quarry</span></h2>
+      <p>Free the gems trapped in stone.</p>
+      <div class="row"><button class="btn accent" id="startPlay">Play</button></div>
     </div>
   </div>
 
@@ -357,7 +376,7 @@ const Store={
 // ---------- sound (synth, no files) ----------
 const Sfx=(()=>{
   let ctx=null, muted=false, adMuted=false;
-  function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume().catch(()=>{});return ctx;}
+  function ac(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state!=='running'&&!adMuted)ctx.resume().catch(()=>{});return ctx;}
   // f: Hz, d: seconds, slide: end frequency for a pitch glide, delay: seconds from now
   function tone(f,d,type,g,{slide=null,delay=0,attack=0.004}={}){
     if(muted||adMuted)return;
@@ -422,10 +441,12 @@ const Sfx=(()=>{
     toggle(){muted=!muted;Store.set('fb_mute',muted);try{if(bus)bus.gain.setTargetAtTime(muted?0:1,ctx.currentTime,0.05);}catch(_){}return muted;},
     // Portals require the game to be silent for the whole ad; this does not touch the player's own mute setting.
     suspend(on){adMuted=on;try{if(ctx){if(on)ctx.suspend();else ctx.resume();}}catch(_){}},
+    wake(){try{if(ctx&&!adMuted&&ctx.state!=='running')ctx.resume().catch(()=>{});}catch(_){}},
     get muted(){return muted;}
   };
 })();
 addEventListener('pointerdown',()=>Sfx.startMusic(),{once:true});
+addEventListener('touchend',()=>Sfx.wake(),{passive:true}); // iOS resumes audio only inside a touch
 function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(_){}}
 
 // ---------- ads adapter: rewarded (revive) and between rounds only, never mid-round ----------
@@ -457,12 +478,15 @@ const Ads={
   ya(){try{return this.ysdk.features;}catch(_){return null;}},
   // Called once the first board is on screen.
   loaded(){if(this.sdk==='ya'&&this.ya()&&this.ya().LoadingAPI)try{this.ya().LoadingAPI.ready();}catch(_){}},
+  _playing:false,
   playStart(){
+    if(this._playing)return;this._playing=true;
     if(this.sdk==='poki')window.PokiSDK.gameplayStart();
     if(this.sdk==='cg'&&this.cg())this.cg().gameplayStart();
     if(this.sdk==='ya'&&this.ya()&&this.ya().GameplayAPI)try{this.ya().GameplayAPI.start();}catch(_){}
   },
   playStop(){
+    if(!this._playing)return;this._playing=false;
     if(this.sdk==='poki')window.PokiSDK.gameplayStop();
     if(this.sdk==='cg'&&this.cg())this.cg().gameplayStop();
     if(this.sdk==='ya'&&this.ya()&&this.ya().GameplayAPI)try{this.ya().GameplayAPI.stop();}catch(_){}
@@ -479,9 +503,10 @@ const Ads={
   // GameMonetize: sdk.showBanner() plays the ad; SDK_GAME_START signals it finished.
   gmAd(){
     if(Ads._pending)return Ads._pending; // one ad request at a time; a second caller shares the first
-    return Ads._pending=new Promise(res=>{
-      let done=false, started=false;
-      const finish=()=>{if(done)return;done=true;Ads._resume=null;Ads._started=null;Ads._pending=null;Sfx.suspend(false);res();};
+    let done=false, p=null;
+    p=new Promise(res=>{
+      let started=false;
+      const finish=()=>{if(done)return;done=true;Ads._resume=null;Ads._started=null;if(Ads._pending===p)Ads._pending=null;adPause(false);res();};
       Ads._resume=finish;
       Ads._started=()=>{started=true;};
       try{
@@ -492,6 +517,8 @@ const Ads={
       setTimeout(()=>{if(!started)finish();},AD_NOFILL_MS);
       setTimeout(finish,AD_TIMEOUT); // a playing ad gets a generous cap, never a stranded player
     });
+    if(!done)Ads._pending=p;
+    return p;
   },
   // CrazyGames Basic launch forbids in-game ads; Revive is free there and Play again is instant.
   rewarded(){
@@ -512,9 +539,13 @@ const Ads={
   }
 };
 // Called by the GameMonetize SDK snippet injected per portal. Muting for the whole ad is mandatory there.
+function adPause(on){
+  Sfx.suspend(on);document.body.classList.toggle('adpause',on);
+  if(on&&dragState){stopDrag();dragState=null;renderTray();}
+}
 window.fbAd=function(name){
-  if(name==='pause'){Sfx.suspend(true);if(Ads._started)Ads._started();}
-  else if(name==='start'){Sfx.suspend(false);if(Ads._resume)Ads._resume();}
+  if(name==='pause'){adPause(true);if(Ads._started)Ads._started();}
+  else if(name==='start'){adPause(false);if(Ads._resume)Ads._resume();}
 };
 
 // ---------- state ----------
@@ -629,7 +660,7 @@ function newGame(){
   if(!Store.get('fb_seen',false))setTimeout(()=>{if(id===gameId)showHand();},400); // after the tray slide-in
   // State the goal in one line when a level starts; level 1 teaches the rule itself.
   // New stones are introduced on the level where they first appear.
-  const intro=level===1?'Fill a row or column\nto free the gems':level===2?'New: rocks\nthey clear with the line':level===3?'New: geodes\nclear twice to crack':`Level ${level}\nFree ${goal} gems`;
+  const intro=level===1?'Fill a row or column\nto free the gems':level===2?'New: rocks\nthey clear with the line':level===3?'New: geodes\nclear once to crack,\nagain to free':`Level ${level}\nFree ${goal} gems`;
   if(mode==='journey')setTimeout(()=>{if(id===gameId)bigPop(intro,false,level<=3);},250);
   Ads.playStart();
 }
@@ -873,6 +904,7 @@ function hideHand(){const h=$('hand');h.getAnimations().forEach(an=>an.cancel())
 
 // ---------- turn ----------
 function placePiece(p,br,bc,idx){
+  if($('bigPop').classList.contains('long'))$('bigPop').classList.remove('show','long');
   grid=withPiece(grid,p,br,bc);
   score+=p.cells.length;moves++;
   if(mode==='journey')movesLeft--;
@@ -1038,8 +1070,9 @@ function levelWon(){
   const id=gameId, j=journey();
   shownGems=goal;updateStats(); // the HUD always reads x / x on the win card
   lastStars=starsFor(movesLeft,budget(level));
+  const firstThree=lastStars===3&&(j.stars[level]||0)<3;
   j.stars[level]=Math.max(j.stars[level]||0,lastStars);j.level=Math.max(j.level,level+1);Store.set('fb_journey',j);
-  Ads.playStop();Ads.happy();Sfx.win();Fx.confetti();buzz([30,40,30,40,80]);
+  Ads.playStop();if(firstThree)Ads.happy();Sfx.win();Fx.confetti();buzz([30,40,30,40,80]);
   bigPop(`Level ${level}\ncomplete!`,true);
   setTimeout(()=>{if(id!==gameId)return;
     showCard({title:`Level ${level} complete`,sub:`All ${goal} gems freed with ${movesLeft} ${movesLeft===1?'move':'moves'} to spare`,stars:lastStars,again:'Replay',next:true});
@@ -1077,7 +1110,7 @@ function showScores(){
   $('scoresMode').textContent=mode==='daily'?'Daily runs':'Zen runs';
   $('scoresList').replaceChildren(...list.map(scoreItem));
   if(!list.length)$('scoresList').innerHTML='<li>No runs yet. Go play!</li>';
-  $('scores').classList.add('show');
+  $('scores').classList.add('show');Ads.playStop();
 }
 
 // ---------- level map: a winding path, level 1 at the top ----------
@@ -1094,7 +1127,9 @@ function showMap(){
   $('map').classList.add('show');
   $('mapPath').scrollTop=Math.max(0,top+(level-1)*H-$('mapPath').clientHeight/2);
 }
-function closeMap(){$('map').classList.remove('show');Ads.playStart();}
+function closeMap(){$('map').classList.remove('show');resumePlay();}
+// Back to the board after a panel: gameplay resumes only if a run is actually in progress.
+function resumePlay(){if(!ended&&!$('overlay').classList.contains('show'))Ads.playStart();}
 $('mapPath').onclick=e=>{
   const b=e.target.closest('.node');if(!b||b.disabled)return;
   level=+b.dataset.l;$('map').classList.remove('show');
@@ -1113,7 +1148,12 @@ async function doShare(){
   try{await navigator.clipboard.writeText(t);toast('Copied to clipboard');}catch(_){toast(t.split('\n')[0]);}
 }
 function toast(msg){const el=$('toast');el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1400);}
-function syncSoundBtn(){$('soundBtn').textContent=Sfx.muted?'🔇':'🔊';}
+const SPEAKER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>';
+function syncSoundBtn(){
+  const b=$('soundBtn'),m=Sfx.muted;
+  b.innerHTML=SPEAKER+(m?'<path d="M16 9.5l5 5M21 9.5l-5 5"/>':'<path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>')+'</svg>';
+  b.setAttribute('aria-label',m?'Sound off':'Sound on');b.setAttribute('aria-pressed',String(!m));
+}
 
 // ---------- wiring ----------
 for(const m in MODES)$(MODES[m]).onclick=()=>setMode(m);
@@ -1126,10 +1166,12 @@ $('ovRevive').onclick=revive;
 $('mapBtn').onclick=showMap;
 $('mapClose').onclick=closeMap;
 $('scoresBtn').onclick=showScores;
-$('scoresClose').onclick=()=>$('scores').classList.remove('show');
-$('helpBtn').onclick=()=>$('help').classList.add('show');
-$('helpClose').onclick=()=>$('help').classList.remove('show');
-const closers={help:()=>$('help').classList.remove('show'),scores:()=>$('scores').classList.remove('show'),map:closeMap};
+const closeScores=()=>{$('scores').classList.remove('show');resumePlay();};
+const closeHelp=()=>{$('help').classList.remove('show');resumePlay();};
+$('scoresClose').onclick=closeScores;
+$('helpBtn').onclick=()=>{$('help').classList.add('show');Ads.playStop();};
+$('helpClose').onclick=closeHelp;
+const closers={help:closeHelp,scores:closeScores,map:closeMap};
 for(const id in closers)$(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closers[id]();});
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;for(const id in closers)if($(id).classList.contains('show'))closers[id]();});
 $('soundBtn').onclick=()=>{Sfx.toggle();syncSoundBtn();};
@@ -1166,7 +1208,9 @@ progressScreen(true);
     Sfx.load();syncSoundBtn();
     newGame();
     gameReady=true;progressScreen(false);
-    Ads.loaded();if(Ads.sdk)Ads.between();
+    Ads.loaded();
+    if(Ads.sdk==='gm'){$('startGate').classList.add('show');$('startPlay').onclick=()=>{$('startGate').classList.remove('show');Ads.between();};}
+    else if(Ads.sdk)Ads.between();
   }catch(e){progressError(e);}
 })();
 </script>
