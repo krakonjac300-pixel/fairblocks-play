@@ -81,7 +81,6 @@
     clip-path:polygon(0 45%,14% 0,30% 60%,46% 5%,62% 70%,78% 10%,92% 55%,100% 35%,100% 65%,92% 95%,78% 50%,62% 100%,46% 45%,30% 100%,14% 40%,0 60%);
     filter:drop-shadow(0 0 3px var(--gc)) brightness(1.25)}
   .gc.crack{animation:crack .45s var(--ease-out)}
-  body.adpause #board,body.adpause #tray,body.adpause .footer{pointer-events:none}
   @keyframes crack{0%{transform:none}25%{transform:scale(1.16) rotate(-5deg); filter:brightness(1.7)}55%{transform:scale(.96) rotate(3deg)}100%{transform:none}}
   @keyframes glow{50%{opacity:.8}}
   @keyframes twinkle{0%,55%,100%{opacity:0; transform:scale(.2) rotate(0)}72%{opacity:1; transform:scale(1) rotate(45deg)}}
@@ -538,9 +537,23 @@ const Ads={
   }
 };
 // Called by the GameMonetize SDK snippet injected per portal. Muting for the whole ad is mandatory there.
+// An SDK can announce an ad (pause) and then fail without announcing its end (start). A watchdog
+// ends the pause once no ad is on screen for 5 s, so the game is never left muted or waiting.
+let adWatch=null;
+function adShowing(){
+  const a=document.getElementById('sdk__advertisement');
+  if(!a)return false;
+  const cs=getComputedStyle(a);
+  return cs.display!=='none'&&cs.visibility!=='hidden'&&+cs.opacity>0.05&&!/-9999/.test(a.style.transform||'');
+}
 function adPause(on){
   Sfx.suspend(on);document.body.classList.toggle('adpause',on);
   if(on&&dragState){stopDrag();dragState=null;renderTray();}
+  clearInterval(adWatch);adWatch=null;
+  if(on){
+    let idle=0;
+    adWatch=setInterval(()=>{idle=adShowing()?0:idle+1;if(idle>=5){adPause(false);if(Ads._resume)Ads._resume();}},1000);
+  }
 }
 window.fbAd=function(name){
   if(name==='pause'){adPause(true);if(Ads._started)Ads._started();}
